@@ -9,6 +9,7 @@ use App\Models\Subscription;
 use App\Models\BioPage;
 use App\Models\Link;
 use App\Models\Analytics;
+use App\Models\Ticket;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
@@ -27,7 +28,7 @@ class DemoDataSeeder extends Seeder
             ['email' => 'admin@linkpeakk.com'],
             [
                 'name' => 'Admin User',
-                'password' => Hash::make('Temp@123'),
+                'password' => Hash::make('password'),
                 'role' => 'admin',
                 'email_verified_at' => now(),
             ]
@@ -38,7 +39,7 @@ class DemoDataSeeder extends Seeder
             ['email' => 'free@linkpeakk.com'],
             [
                 'name' => 'Free User',
-                'password' => Hash::make('Temp@123'),
+                'password' => Hash::make('password'),
                 'role' => 'user',
                 'email_verified_at' => now(),
             ]
@@ -63,13 +64,14 @@ class DemoDataSeeder extends Seeder
         }
         
         $this->createBioPage($freeUser, 'free-page', 'Free User Page', 'classic', 'light');
+        $this->createTickets($freeUser);
 
         // 3. Create Pro User
         $proUser = User::firstOrCreate(
             ['email' => 'pro@linkpeakk.com'],
             [
                 'name' => 'Pro User',
-                'password' => Hash::make('Temp@123'),
+                'password' => Hash::make('password'),
                 'role' => 'user',
                 'email_verified_at' => now(),
             ]
@@ -88,6 +90,7 @@ class DemoDataSeeder extends Seeder
             );
         }
         $this->createBioPage($proUser, 'pro-page', 'Pro User Creative', 'hero', 'dark', true);
+        $this->createTickets($proUser);
 
 
         // 4. Create Agency User
@@ -95,7 +98,7 @@ class DemoDataSeeder extends Seeder
             ['email' => 'agency@linkpeakk.com'],
             [
                 'name' => 'Agency User',
-                'password' => Hash::make('Temp@123'),
+                'password' => Hash::make('password'),
                 'role' => 'agency',
                 'email_verified_at' => now(),
             ]
@@ -118,6 +121,7 @@ class DemoDataSeeder extends Seeder
         $this->createBioPage($agencyUser, 'agency-main', 'Agency Main', 'modern', 'dark', true);
         $this->createBioPage($agencyUser, 'agency-client-1', 'Client One', 'glass', 'custom', true);
         $this->createBioPage($agencyUser, 'agency-client-2', 'Client Two', 'minimal', 'light', true);
+        $this->createTickets($agencyUser);
 
         $this->command->info('Demo Data Seeding Completed!');
         $this->command->info('Users: admin@linkpeakk.com, free@linkpeakk.com, pro@linkpeakk.com, agency@linkpeakk.com');
@@ -221,6 +225,37 @@ class DemoDataSeeder extends Seeder
                 $page->increment('views', $views);
                 $page->increment('unique_views', $uniqueViews);
             }
+        }
+    }
+
+    private function createTickets($user)
+    {
+        $tickets = [
+            [
+                'subject' => 'Payment Issue',
+                'message' => 'I was charged twice for my subscription. Please help!',
+                'status' => 'open',
+                'priority' => 'high',
+                'category' => 'Billing',
+            ],
+            [
+                'subject' => 'Template customization',
+                'message' => 'How can I change the font color of my bento template?',
+                'status' => 'pending',
+                'priority' => 'medium',
+                'category' => 'Technical',
+            ],
+            [
+                'subject' => 'New Feature Request',
+                'message' => 'I would love to see a Spotify integration!',
+                'status' => 'resolved',
+                'priority' => 'low',
+                'category' => 'General',
+            ],
+        ];
+
+        foreach ($tickets as $ticketData) {
+            Ticket::create(array_merge($ticketData, ['user_id' => $user->id]));
         }
     }
 }

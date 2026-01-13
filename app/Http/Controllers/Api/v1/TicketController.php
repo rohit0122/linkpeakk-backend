@@ -13,7 +13,7 @@ class TicketController extends Controller
      */
     public function index(Request $request)
     {
-        $tickets = $request->user()->tickets()->latest()->get();
+        $tickets = $request->user()->tickets()->latest()->paginate(10);
 
         return \App\Helpers\ApiResponse::success($tickets, 'Tickets retrieved successfully');
     }
@@ -91,7 +91,7 @@ class TicketController extends Controller
      */
     public function adminIndex(Request $request)
     {
-        $tickets = Ticket::with('user:id,name,email')->latest()->get();
+        $tickets = Ticket::with('user:id,name,email')->latest()->paginate(10);
 
         return \App\Helpers\ApiResponse::success($tickets, 'All tickets retrieved successfully');
     }
