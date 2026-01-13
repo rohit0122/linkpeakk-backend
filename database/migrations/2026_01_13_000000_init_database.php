@@ -170,6 +170,9 @@ return new class extends Migration
             $table->index('is_active');
         });
 
+        // Ensure profile_image_blob is LONGBLOB for raw binary storage
+        DB::statement("ALTER TABLE bio_pages MODIFY profile_image_blob LONGBLOB");
+
         // 4. Links Table
         Schema::create('links', function (Blueprint $table) {
             $table->id();
