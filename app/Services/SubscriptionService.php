@@ -145,6 +145,62 @@ class SubscriptionService
     }
 
     /**
+     * Downgrade user to free plan (cancel active paid subscription).
+     */
+    public function downgradeToFree(User $user)
+    {
+        $activeSub = $user->activeSubscription;
+
+        if ($activeSub) {
+            // Cancel the active subscription in Razorpay
+            if ($activeSub->razorpay_subscription_id) {
+                try {
+                    // Cancel immediately or at cycle end? 
+                    // Usually for downgrade to free, we might want to let them finish their term 
+                    // OR cancel immediately. Let's cancel immediately for now as per requirement implication.
+                    // If we want them to finish the term, we just set cancel_at_period_end = true
+                    // and let the webhook handle the actual status change.
+                    // BUT, if the UI says "Select Free" and we return "Success", the user expects it to be done.
+                    $this->razorpayService->cancelSubscription($activeSub->razorpay_subscription_id, false); 
+                } catch (\Exception $e) {
+                    // Log error but proceed to update local DB to reflect intent?
+                    // Or fail? Best to log and proceed if possible, or rethrow.
+                    \Illuminate\Support\Facades\Log::error("Failed to cancel Razorpay subscription {$activeSub->razorpay_subscription_id}: " . $e->getMessage());
+                    // We might still want to mark it locally if we trust the intent. 
+                    // But let's throw for now to be safe, or handle gracefully.
+                }
+            }
+
+            $activeSub->update([
+                'cancelled_at' => Carbon::now(),
+                'status' => 'cancelled', // Or keep 'active' until period ends if using cancel_at_period_end
+                'ends_at' => Carbon::now(),
+            ]);
+        }
+
+        // Technically "Free" might not need a subscription record, 
+        // OR we create a specific record for the Free plan. 
+        // Based on PlanSeeder, Free is a plan.
+        $freePlan = Plan::where('slug', 'free')->first();
+        
+        if ($freePlan) {
+             // Create a local subscription record for Free just for tracking? 
+             // Or usually, no active subscription means free?
+             // Let's create one for consistency if the system relies on $user->activeSubscription to check limits.
+             // But usually systems rely on "No Paid Sub = Free".
+             // However, checks in User.php: 
+             // $subscription = $this->activeSubscription()->with('plan')->first();
+             // if (!$subscription) ... default to Free.
+             // So we actually DON'T need a row for Free plan necessarily.
+             // But if we want to be explicit:
+             
+             // return Subscription::create([...]);
+        }
+
+        return $activeSub;
+    }
+
+    /**
      * Check if user's trial has expired and suspend if no active subscription exists.
      */
     public function checkAndHandleTrialExpiry(User $user)

@@ -44,12 +44,22 @@ class SubscriptionController extends Controller
         $user = $request->user();
 
         if ($plan->price == 0) {
-             // Handle checking to free plan logic if needed, usually just cancelling paid sub
-             return response()->json([
-                'success' => true,
-                'message' => 'Free plan selected.',
-                'data' => []
-             ]);
+             try {
+                 $this->subscriptionService->downgradeToFree($user);
+                 
+                 return response()->json([
+                    'success' => true,
+                    'message' => 'Plan changed to Free successfully.',
+                    'data' => []
+                 ]);
+             } catch (\Throwable $e) {
+                 \Illuminate\Support\Facades\Log::error('Downgrade to Free Error: ' . $e->getMessage());
+                 return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to change plan: ' . $e->getMessage(),
+                    'data' => []
+                ], 400);
+             }
         }
         
         try {

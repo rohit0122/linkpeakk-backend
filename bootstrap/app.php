@@ -24,14 +24,11 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, $request) {
-            if ($request->is('api/*') || $request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Endpoint or resource not found.',
-                    'data' => []
-                ], 200);
-            }
-            return response('404 | Resource not found.', 200);
+            return response()->json([
+                'success' => false,
+                'message' => 'Endpoint or resource not found.',
+                'data' => []
+            ], 200);
         });
 
         $exceptions->render(function (\Throwable $e, $request) {
@@ -39,13 +36,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            if ($request->is('api/*') || $request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'An internal error occurred.',
-                    'data' => []
-                ], 200);
-            }
-            return response('500 | Internal Server Error.', 200);
+            return response()->json([
+                'success' => false,
+                'message' => 'An internal error occurred.',
+                'data' => []
+            ], 200);
         });
     })->create();
