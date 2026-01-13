@@ -1,0 +1,1 @@
+{"version":2,"defects":{"Tests\\Unit\\SubscriptionExpiryTest::it_suspends_users_when_plan_expires":8,"Tests\\Unit\\SubscriptionExpiryTest::it_activates_scheduled_subscriptions_at_start_date":8},"times":{"Tests\\Unit\\SubscriptionExpiryTest::it_suspends_users_when_plan_expires":0.052,"Tests\\Unit\\SubscriptionExpiryTest::it_activates_scheduled_subscriptions_at_start_date":0.007}}

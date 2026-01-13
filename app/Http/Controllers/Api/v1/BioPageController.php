@@ -1,0 +1,165 @@
+<?php
+
+namespace App\Http\Controllers\Api\v1;
+
+use App\Helpers\ApiResponse;
+use App\Http\Controllers\Controller;
+use App\Traits\ImageUploadTrait;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class BioPageController extends Controller
+{
+    use ImageUploadTrait;
+
+    public function index(Request $request)
+    {
+        $pages = $request->user()->bioPages()
+            ->select('id', 'user_id', 'slug', 'title', 'is_active', 'views', 'unique_views', 'created_at')
+            ->get();
+
+        return ApiResponse::success($pages, 'Bio pages retrieved successfully');
+    }
+
+    public function show(Request $request, $id, \App\Services\DashboardService $dashboardService)
+    {
+        $page = $request->user()->bioPages()->findOrFail($id);
+        $data = $dashboardService->formatBioPage($page);
+
+        return ApiResponse::success($data, 'Bio page retrieved successfully');
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'slug' => 'required|string|unique:bio_pages,slug|max:255',
+            'title' => 'sometimes|string|max:255',
+            'bio' => 'sometimes|string',
+            'template' => 'sometimes|string|in:classic,grid,hero,social,modern,bento,influencer,sleek',
+            'theme' => 'sometimes|string',
+        ]);
+
+        $user = $request->user();
+
+        if (! $user->canAccessFeature('pages', $user->bioPages()->count())) {
+            return ApiResponse::error('Plan limit reached for pages. Please upgrade.', 403);
+        }
+
+        // Validate Template
+        if ($request->has('template') && ! $user->canAccessFeature('allowedTemplates', $request->template)) {
+            return ApiResponse::error('Upgrade to Pro/Agency to use this template.', 403);
+        }
+
+        // Validate Theme
+        if ($request->has('theme') && ! $user->canAccessFeature('themes', $request->theme)) {
+            return ApiResponse::error('Upgrade to Pro to use this theme.', 403);
+        }
+
+        $page = $user->bioPages()->create([
+            'slug' => Str::slug($request->slug),
+            'title' => $request->title ?? $user->name."'s Page",
+            'bio' => $request->bio,
+            'template' => $request->template ?? 'classic',
+            'theme' => $request->theme ?? 'light',
+            'is_active' => true,
+        ]);
+
+        return ApiResponse::success($page, 'Bio page created successfully');
+    }
+
+    public function update(Request $request, $id, \App\Services\DashboardService $dashboardService)
+    {
+        $page = $request->user()->bioPages()->findOrFail($id);
+
+        $request->validate([
+            'slug' => 'sometimes|string|unique:bio_pages,slug,'.$id.'|max:255',
+            'title' => 'sometimes|string|max:255',
+            'bio' => 'sometimes|string',
+            'template' => 'sometimes|string|in:classic,grid,hero,social,modern,bento,influencer,sleek',
+            'theme' => 'sometimes|string',
+            'profile_image' => 'sometimes|nullable|string',
+            'profile_image_file' => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+            'is_sensitive' => 'sometimes|boolean',
+            'show_branding' => 'sometimes|boolean',
+            'seo' => 'sometimes|array',
+            'social_links' => 'sometimes|array',
+            'branding' => 'sometimes|array',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        $user = $request->user();
+
+        // Validate Template
+        if ($request->has('template') && ! $user->canAccessFeature('allowedTemplates', $request->template)) {
+            return ApiResponse::error('Upgrade to Pro/Agency to use this template.', 403);
+        }
+
+        // Validate Theme
+        if ($request->has('theme') && ! $user->canAccessFeature('themes', $request->theme)) {
+            return ApiResponse::error('Upgrade to Pro to use this theme.', 403);
+        }
+
+        // Validate SEO
+        if ($request->has('seo') && ! $user->canAccessFeature('seo')) {
+            return ApiResponse::error('Upgrade to Pro to customize SEO settings.', 403);
+        }
+
+        // Validate Branding
+        if ($request->has('branding')) {
+            if ($request->input('branding.removeWatermark') && ! $user->canAccessFeature('removeWatermark')) {
+                return ApiResponse::error('Upgrade to Pro to remove watermark.', 403);
+            }
+            if ($request->input('branding.customText') || $request->input('branding.customUrl')) {
+                if (! $user->canAccessFeature('customBranding')) {
+                    return ApiResponse::error('Upgrade to Agency for custom branding.', 403);
+                }
+            }
+        }
+
+        $data = $request->except(['profile_image_file']); // Exclude file field
+        if (isset($data['slug'])) {
+            $data['slug'] = Str::slug($data['slug']);
+        }
+
+        if ($request->hasFile('profile_image_file')) {
+            // $this->deleteImage($page->profile_image); // No longer dealing with files
+            $blob = $this->optimizeImageToBinary($request->file('profile_image_file'), 800, 800);
+            $data['profile_image_blob'] = $blob;
+            // Set profile_image path to the API endpoint
+            $currentSlug = $data['slug'] ?? $page->slug;
+             // Ensure we use the correct slug if it's being updated
+            $data['profile_image'] = 'api/v1/public/pages/' . $currentSlug . '/image';
+        }
+
+        $page->update($data);
+        $page = $page->fresh(); // Reload with new data and accessors
+        
+        $data = $dashboardService->formatBioPage($page);
+
+        return ApiResponse::success($data, 'Bio page updated successfully');
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $page = $request->user()->bioPages()->findOrFail($id);
+        $page->delete();
+
+        return ApiResponse::success([], 'Bio page deleted successfully');
+    }
+
+    /**
+     * Serve profile image from BLOB.
+     */
+    public function image($slug)
+    {
+        $page = \App\Models\BioPage::where('slug', $slug)->firstOrFail();
+
+        if (!$page->profile_image_blob) {
+            return response('', 404);
+        }
+
+        return response($page->profile_image_blob)
+            ->header('Content-Type', 'image/webp')
+            ->header('Cache-Control', 'public, max-age=86400');
+    }
+}

@@ -1,0 +1,88 @@
+<?php
+
+namespace App\Http\Controllers\Api\v1;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+
+use App\Traits\ImageUploadTrait;
+
+class SettingsController extends Controller
+{
+    use ImageUploadTrait;
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => ['sometimes', 'email', Rule::unique('users')->ignore($user->id)],
+            'bio' => 'sometimes|nullable|string',
+            'avatar_file' => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+        ]);
+
+        $data = $request->except(['avatar_file']); // Exclude file field
+
+        if ($request->hasFile('avatar_file')) {
+            // $this->deleteImage($user->avatar_url); // No longer dealing with files
+            $blob = $this->optimizeImageToBinary($request->file('avatar_file'), 500, 500);
+            $data['avatar_url_blob'] = $blob;
+            $data['avatar_url'] = 'api/v1/public/user/' . $user->id . '/avatar';
+        }
+
+        $user->update($data);
+        $user = $user->fresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile updated successfully.',
+            'data' => $user
+        ]);
+    }
+
+    public function updatePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'new_password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Current password does not match.',
+                'data' => []
+            ], 400);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->new_password)
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password changed successfully.',
+            'data' => []
+        ]);
+    }
+
+    /**
+     * Serve user avatar from BLOB.
+     */
+    public function avatar($id)
+    {
+        $user = \App\Models\User::findOrFail($id);
+
+        if (!$user->avatar_url_blob) {
+            return response('', 404);
+        }
+
+        return response($user->avatar_url_blob)
+            ->header('Content-Type', 'image/webp')
+            ->header('Cache-Control', 'public, max-age=86400');
+    }
+}
