@@ -94,6 +94,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'api.rate.limit:60,1'])->group(
     // Settings
     Route::put('/settings/profile', [\App\Http\Controllers\Api\v1\SettingsController::class, 'updateProfile']);
     Route::put('/settings/password', [\App\Http\Controllers\Api\v1\SettingsController::class, 'updatePassword']);
+    Route::delete('/settings/account', [\App\Http\Controllers\Api\v1\SettingsController::class, 'deleteAccount']);
 
     // Support
     Route::post('/contact', [\App\Http\Controllers\Api\v1\ContactController::class, 'submit']);

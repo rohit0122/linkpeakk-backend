@@ -34,7 +34,7 @@ class DashboardService
             ->with(['plan' => function ($query) {
                 $query->select('id', 'name', 'slug', 'price');
             }])
-            ->select('subscriptions.id', 'subscriptions.user_id', 'subscriptions.plan_id', 'subscriptions.status', 'subscriptions.razorpay_subscription_id', 'subscriptions.current_period_end')
+            ->select('subscriptions.id', 'subscriptions.user_id', 'subscriptions.plan_id', 'subscriptions.status', 'subscriptions.razorpay_subscription_id', 'subscriptions.current_period_end', 'subscriptions.trial_ends_at')
             ->first();
 
         if (! $subscription) {
@@ -48,13 +48,20 @@ class DashboardService
                 'formatted_status' => 'Free Plan',
             ];
         } else {
+            $statusLabel = ucfirst($subscription->status);
+            if ($subscription->status === 'trialing') {
+                $statusLabel .= ' (Trial)';
+            } elseif ($subscription->status === 'pending') {
+                $statusLabel = 'Pending Payment';
+            }
+
             $data['subscription'] = [
                 'status' => $subscription->status,
                 'plan_name' => $subscription->plan->name,
                 'razorpay_subscription_id' => $subscription->razorpay_subscription_id,
                 'expiry_date' => $subscription->current_period_end ? $subscription->current_period_end->format('M d, Y, h:iA') : 'Never',
-                'is_trial' => $subscription->status === 'trialing',
-                'formatted_status' => ucfirst($subscription->status).($subscription->status === 'trialing' ? ' (Trial)' : ''),
+                'is_trial' => $subscription->status === 'trialing' || ($subscription->status === 'pending' && $subscription->trial_ends_at && $subscription->trial_ends_at->isFuture()),
+                'formatted_status' => $statusLabel,
                 'prefill' => [
                     'name' => $user->name,
                     'email' => $user->email,
@@ -66,7 +73,7 @@ class DashboardService
         $bioPages = $user->bioPages()
             ->with(['links' => function ($query) {
                 $query->select('id', 'user_id', 'bio_page_id', 'title', 'url', 'icon', 'is_active', 'order', 'clicks', 'unique_clicks', 'created_at', 'updated_at')
-                ->orderBy('order');
+                    ->orderBy('order');
             }])
             ->select('id', 'user_id', 'slug', 'title', 'bio', 'theme', 'template', 'profile_image', 'profile_image_blob', 'social_links', 'branding', 'views', 'unique_views', 'is_active')
             ->orderBy('created_at', 'desc')

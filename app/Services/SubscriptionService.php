@@ -23,32 +23,45 @@ class SubscriptionService
         $user = $subscription->user;
         $plan = $subscription->plan;
 
-        $trialEndsAt = Carbon::now()->addDays($plan->trial_days); // 7 days default
+        // Default to a 7-day trial if not specified in the plan
+        $trialDays = $plan->trial_days ?? 7;
+        $trialEndsAt = Carbon::now()->addDays($trialDays);
         
-        // Check if user already has a customer ID in any of their subscriptions
+        // Check if user already has a customer ID
         $customerId = $user->subscriptions()->whereNotNull('razorpay_customer_id')->value('razorpay_customer_id');
 
         if (!$customerId) {
             $customerId = $this->razorpayService->getOrCreateCustomer($user->name, $user->email);
         }
 
-        $razorpaySub = $this->razorpayService->createSubscription(
-            $plan->razorpay_plan_id,
-            $customerId,
-            120, // 10 years roughly
-            $trialEndsAt->timestamp
-        );
+        // Razorpay only allows start_at in the future. 
+        // If trialDays is greater than 0, we set start_at.
+        $startAt = $trialDays > 0 ? $trialEndsAt->timestamp : null;
 
-        $subscription->update([
-            'razorpay_subscription_id' => $razorpaySub->id,
-            'razorpay_customer_id' => $customerId,
-            'status' => 'trialing',
-            'trial_ends_at' => $trialEndsAt,
-            'current_period_start' => Carbon::now(),
-            'current_period_end' => $trialEndsAt,
-        ]);
+        \Illuminate\Support\Facades\Log::info("Initializing Razorpay subscription for user {$user->id} with plan {$plan->slug}. Trial days: {$trialDays}");
 
-        return $subscription;
+        try {
+            $razorpaySub = $this->razorpayService->createSubscription(
+                $plan->razorpay_plan_id,
+                $customerId,
+                120, // 10 years
+                $startAt
+            );
+
+            $subscription->update([
+                'razorpay_subscription_id' => $razorpaySub->id,
+                'razorpay_customer_id' => $customerId,
+                'status' => $trialDays > 0 ? 'trialing' : 'active',
+                'trial_ends_at' => $trialDays > 0 ? $trialEndsAt : null,
+                'current_period_start' => Carbon::now(),
+                'current_period_end' => $trialEndsAt,
+            ]);
+
+            return $subscription;
+        } catch (Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to create Razorpay subscription for user {$user->id}: " . $e->getMessage());
+            throw $e;
+        }
     }
 
     public function createTrialSubscription(User $user, Plan $plan)

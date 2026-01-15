@@ -2,13 +2,16 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Plan;
+use Illuminate\Database\Seeder;
 
 class PlanSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     *
+     * IMPORTANT: Replace 'plan_pro_id_placeholder' and 'plan_agency_id_placeholder'
+     * with real Razorpay Plan IDs from your dashboard for the subscription system to work.
      */
     public function run(): void
     {
@@ -23,10 +26,10 @@ class PlanSeeder extends Seeder
                 'trial_days' => 0,
                 'is_active' => true,
                 'features' => [
-                    'links' => 5, 
-                    'pages' => 1, 
-                    'allowedTemplates' => ['classic'], 
-                    'themes' => 'ALL', 
+                    'links' => 5,
+                    'pages' => 1,
+                    'allowedTemplates' => ['classic'],
+                    'themes' => 'ALL',
                     'analytics' => 7,
                     'customQR' => false,
                     'seo' => false,
@@ -43,10 +46,10 @@ class PlanSeeder extends Seeder
                 'trial_days' => 0,
                 'is_active' => true,
                 'features' => [
-                    'links' => 5, 
-                    'pages' => 1, 
-                    'allowedTemplates' => ['classic'], 
-                    'themes' => ['light', 'dark'], 
+                    'links' => 5,
+                    'pages' => 1,
+                    'allowedTemplates' => ['classic'],
+                    'themes' => ['light', 'dark'],
                     'analytics' => 7,
                     'customQR' => false,
                     'seo' => false,
@@ -63,10 +66,10 @@ class PlanSeeder extends Seeder
                 'trial_days' => 7,
                 'is_active' => true,
                 'features' => [
-                    'links' => 1000, 
-                    'pages' => 1, 
-                    'allowedTemplates' => ['classic', 'bento', 'hero', 'influencer', 'sleek'], 
-                    'themes' => ['light', 'dark', 'cupcake', 'bumblebee', 'emerald', 'corporate', 'retro', 'cyberpunk', 'valentine', 'coffee'], 
+                    'links' => 1000,
+                    'pages' => 1,
+                    'allowedTemplates' => ['classic', 'bento', 'hero', 'influencer', 'sleek', 'minimalist', 'glassmorphism', 'stack'],
+                    'themes' => ['light', 'dark', 'midnight', 'aurora', 'cyberglow', 'hyperpop', 'zenstone', 'matcha', 'nebula'],
                     'analytics' => 90,
                     'customQR' => true,
                     'seo' => true,
@@ -83,10 +86,10 @@ class PlanSeeder extends Seeder
                 'trial_days' => 7,
                 'is_active' => true,
                 'features' => [
-                    'links' => 1000, 
-                    'pages' => 10, 
-                    'allowedTemplates' => 'ALL', 
-                    'themes' => 'ALL', 
+                    'links' => 1000,
+                    'pages' => 10,
+                    'allowedTemplates' => 'ALL',
+                    'themes' => 'ALL',
                     'analytics' => 9999,
                     'customQR' => true,
                     'seo' => true,

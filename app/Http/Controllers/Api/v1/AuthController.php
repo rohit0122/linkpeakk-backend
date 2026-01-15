@@ -3,15 +3,15 @@
 namespace App\Http\Controllers\Api\v1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Plan;
+use App\Models\Subscription;
 use App\Models\User;
+use App\Notifications\WelcomeNotification;
+use App\Services\SubscriptionService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use App\Models\Plan;
-use App\Models\Subscription;
-use App\Services\SubscriptionService;
-use Carbon\Carbon;
-use App\Notifications\WelcomeNotification;
 
 class AuthController extends Controller
 {
@@ -38,8 +38,12 @@ class AuthController extends Controller
             ]);
 
             // Handle Plan Subscription
-            $planSlug = $request->input('plan', 'free');
+            $planSlug = strtolower($request->input('plan', 'free'));
             $plan = Plan::where('slug', $planSlug)->first();
+
+            if ($planSlug === 'agency') {
+                $user->update(['role' => 'agency']);
+            }
 
             if ($plan) {
                 if ($plan->slug === 'free') {
@@ -54,11 +58,14 @@ class AuthController extends Controller
                 } else {
                     // For Paid plans, create a pending local subscription
                     // Razorpay id will be created after email verification
+                    $trialEndsAt = Carbon::now()->addDays($plan->trial_days ?: 7);
                     Subscription::create([
                         'user_id' => $user->id,
                         'plan_id' => $plan->id,
                         'status' => 'pending', // Special status for unverified emails
                         'current_period_start' => Carbon::now(),
+                        'current_period_end' => $trialEndsAt,
+                        'trial_ends_at' => $trialEndsAt,
                     ]);
                 }
             }
@@ -79,7 +86,8 @@ class AuthController extends Controller
                 'data' => $e->errors(),
             ], 422);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Registration Error: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Registration Error: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Registration failed: '.$e->getMessage(),
@@ -115,7 +123,7 @@ class AuthController extends Controller
         event(new \Illuminate\Auth\Events\Verified($user));
 
         // Send Welcome Email
-        $user->notify(new WelcomeNotification());
+        $user->notify(new WelcomeNotification);
 
         // Check for pending paid subscription to initialize Razorpay
         $pendingSubscription = Subscription::where('user_id', $user->id)
@@ -125,9 +133,20 @@ class AuthController extends Controller
         if ($pendingSubscription) {
             try {
                 // Initialize Razorpay Subscription (Customer + Subscription)
-                app(\App\Services\SubscriptionService::class)->initializeRazorpaySubscription($pendingSubscription);
+                \Illuminate\Support\Facades\Log::info('Attempting to initialize Razorpay subscription for verified user: '.$user->id);
+                $subscriptionService = app(\App\Services\SubscriptionService::class);
+                $subscriptionService->initializeRazorpaySubscription($pendingSubscription);
+                \Illuminate\Support\Facades\Log::info('Razorpay subscription successfully initialized for user: '.$user->id);
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('Razorpay initialization failed after verification: ' . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error('Razorpay initialization FAILED after verification for user '.$user->id.': '.$e->getMessage(), [
+                    'exception' => $e,
+                    'user_id' => $user->id,
+                    'plan' => $pendingSubscription->plan->slug ?? 'unknown',
+                    'razorpay_plan_id' => $pendingSubscription->plan->razorpay_plan_id ?? 'missing',
+                ]);
+
+                // We don't want to break the verification flow if Razorpay fails (e.g. invalid plan IDs)
+                // but the user should be aware their premium features might be pending setup.
             }
         }
 

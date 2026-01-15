@@ -35,7 +35,7 @@ class BioPageController extends Controller
             'slug' => 'required|string|unique:bio_pages,slug|max:255',
             'title' => 'sometimes|string|max:255',
             'bio' => 'sometimes|string',
-            'template' => 'sometimes|string|in:classic,grid,hero,social,modern,bento,influencer,sleek',
+            'template' => 'sometimes|string|in:classic,bento,hero,influencer,sleek,minimalist,glassmorphism,stack,brutalist,neobrutalism,darkneon,elegantserif,tiles,softpastel,gradientmesh,grid,social,modern',
             'theme' => 'sometimes|string',
         ]);
 
@@ -55,11 +55,16 @@ class BioPageController extends Controller
             return ApiResponse::error('Upgrade to Pro to use this theme.', 403);
         }
 
+        $template = $request->template ?? 'classic';
+        // Map legacy template IDs
+        $templateMap = ['grid' => 'bento', 'social' => 'influencer', 'modern' => 'sleek'];
+        $template = $templateMap[$template] ?? $template;
+
         $page = $user->bioPages()->create([
             'slug' => Str::slug($request->slug),
             'title' => $request->title ?? $user->name."'s Page",
             'bio' => $request->bio,
-            'template' => $request->template ?? 'classic',
+            'template' => $template,
             'theme' => $request->theme ?? 'light',
             'is_active' => true,
         ]);
@@ -75,7 +80,7 @@ class BioPageController extends Controller
             'slug' => 'sometimes|string|unique:bio_pages,slug,'.$id.'|max:255',
             'title' => 'sometimes|string|max:255',
             'bio' => 'sometimes|string',
-            'template' => 'sometimes|string|in:classic,grid,hero,social,modern,bento,influencer,sleek',
+            'template' => 'sometimes|string|in:classic,bento,hero,influencer,sleek,minimalist,glassmorphism,stack,brutalist,neobrutalism,darkneon,elegantserif,tiles,softpastel,gradientmesh,grid,social,modern',
             'theme' => 'sometimes|string',
             'profile_image' => 'sometimes|nullable|string',
             'profile_image_file' => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
@@ -119,6 +124,11 @@ class BioPageController extends Controller
         $data = $request->except(['profile_image_file']); // Exclude file field
         if (isset($data['slug'])) {
             $data['slug'] = Str::slug($data['slug']);
+        }
+
+        if (isset($data['template'])) {
+            $templateMap = ['grid' => 'bento', 'social' => 'influencer', 'modern' => 'sleek'];
+            $data['template'] = $templateMap[$data['template']] ?? $data['template'];
         }
 
         if ($request->hasFile('profile_image_file')) {

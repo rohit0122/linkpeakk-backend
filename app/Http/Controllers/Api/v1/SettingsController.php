@@ -82,7 +82,59 @@ class SettingsController extends Controller
         }
 
         return response($user->avatar_url_blob)
-            ->header('Content-Type', 'image/webp')
             ->header('Cache-Control', 'public, max-age=86400');
+    }
+    /**
+     * Delete user account and all associated data.
+     */
+    public function deleteAccount(Request $request)
+    {
+        $user = $request->user();
+
+        \DB::beginTransaction();
+        try {
+            // Delete Tickets
+            $user->tickets()->delete();
+
+            // Delete Links
+            $user->links()->delete();
+
+            // Delete Bio Pages and their related data
+            foreach ($user->bioPages as $bioPage) {
+                // Delete Analytics for this bio page
+                $bioPage->analytics()->delete();
+                // Delete Leads for this bio page
+                $bioPage->leads()->delete();
+                // Forget cache
+                $bioPage->purgeCache();
+                // Delete the bio page itself
+                $bioPage->delete();
+            }
+
+            // Delete Subscriptions and Plan Changes
+            foreach ($user->subscriptions as $subscription) {
+                \App\Models\PlanChange::where('subscription_id', $subscription->id)->delete();
+                $subscription->delete();
+            }
+
+            // Finally delete the user
+            $user->tokens()->delete(); // Revoke all tokens
+            $user->delete();
+
+            \DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Your account and all associated data have been permanently deleted.',
+                'data' => []
+            ]);
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete account. Please try again later.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
