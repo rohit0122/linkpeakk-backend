@@ -35,7 +35,8 @@ class SubscriptionRenewalUpcoming extends Notification
      */
     public function toMail(object $notifiable): \Illuminate\Notifications\Messages\MailMessage
     {
-        $daysLeft = now()->diffInDays($this->subscription->current_period_end);
+        $daysLeft = (int) ceil(now()->diffInMinutes($this->subscription->current_period_end) / 1440);
+        if ($daysLeft < 0) $daysLeft = 0;
         $isUrgent = $daysLeft <= 3;
         $trial = $this->subscription->plan->name === 'Trial' || str_contains(strtolower($this->subscription->plan->name), 'trial');
         $renewUrl = config('app.public_url') . '/dashboard';

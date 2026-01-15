@@ -58,6 +58,6 @@
 </table>
 
 <p style="margin:32px 0 0 0;font-size:16px;line-height:1.6;color:#4B5563;">
-    We're thrilled to have you here. If you need any help, just reply to this email!
+    We're thrilled to have you here. If you need any help, check our <a href="{{ config('app.public_url') }}/contact-us">Contact Us</a> page!
 </p>
 @endsection

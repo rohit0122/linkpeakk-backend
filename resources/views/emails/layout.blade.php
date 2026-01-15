@@ -38,12 +38,14 @@
                     <tr>
                         <td style="padding:32px;background-color:#F9FAFB;text-align:center;font-size:13px;color:#6B7280;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
                             <p style="margin:0 0 8px 0;">© {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
-                            <p style="margin:0 0 16px 0;">Empowering creators to peak their online presence.</p>
+                            <p style="margin:0 0 16px 0;">The peak of your digital identity.</p>
 
                             <p style="margin:0;">
                                 <a href="{{ config('app.public_url') }}/dashboard" style="color:#6D28D9;text-decoration:underline;">Dashboard</a> ·
-                                <a href="{{ config('app.public_url') }}/terms" style="color:#6D28D9;text-decoration:underline;">Terms</a> ·
-                                <a href="{{ config('app.public_url') }}/privacy" style="color:#6D28D9;text-decoration:underline;">Privacy</a>
+                                <a href="{{ config('app.public_url') }}/terms-and-conditions" style="color:#6D28D9;text-decoration:underline;">Terms</a> ·
+                                <a href="{{ config('app.public_url') }}/privacy-policy" style="color:#6D28D9;text-decoration:underline;">Privacy</a> ·
+                                <a href="{{ config('app.public_url') }}/cookies-policy" style="color:#6D28D9;text-decoration:underline;">Cookies</a> ·
+                                <a href="{{ config('app.public_url') }}/contact-us" style="color:#6D28D9;text-decoration:underline;">Contact</a>
                             </p>
                         </td>
                     </tr>
