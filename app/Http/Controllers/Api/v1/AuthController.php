@@ -207,6 +207,18 @@ class AuthController extends Controller
                 ], 401);
             }
 
+            // Enforce email verification
+            if (! $user->hasVerifiedEmail()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please verify your email address before logging in. If you didn\'t receive the email, you can request a new one.',
+                    'data' => [
+                        'needs_verification' => true,
+                        'email' => $user->email
+                    ],
+                ], 403);
+            }
+
             // Check and handle trial expiry suspension
             $subscriptionService = app(SubscriptionService::class);
             $subscriptionService->checkAndHandleTrialExpiry($user);

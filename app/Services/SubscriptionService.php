@@ -6,8 +6,8 @@ use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Exception;
+use Illuminate\Support\Facades\DB;
 
 class SubscriptionService
 {
@@ -26,15 +26,15 @@ class SubscriptionService
         // Default to a 7-day trial if not specified in the plan
         $trialDays = $plan->trial_days ?? 7;
         $trialEndsAt = Carbon::now()->addDays($trialDays);
-        
+
         // Check if user already has a customer ID
         $customerId = $user->subscriptions()->whereNotNull('razorpay_customer_id')->value('razorpay_customer_id');
 
-        if (!$customerId) {
+        if (! $customerId) {
             $customerId = $this->razorpayService->getOrCreateCustomer($user->name, $user->email);
         }
 
-        // Razorpay only allows start_at in the future. 
+        // Razorpay only allows start_at in the future.
         // If trialDays is greater than 0, we set start_at.
         $startAt = $trialDays > 0 ? $trialEndsAt->timestamp : null;
 
@@ -59,7 +59,7 @@ class SubscriptionService
 
             return $subscription;
         } catch (Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Failed to create Razorpay subscription for user {$user->id}: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("Failed to create Razorpay subscription for user {$user->id}: ".$e->getMessage());
             throw $e;
         }
     }
@@ -67,7 +67,7 @@ class SubscriptionService
     public function createTrialSubscription(User $user, Plan $plan)
     {
         \Illuminate\Support\Facades\Log::info("Starting subscription upgrade/creation for user {$user->id} to plan {$plan->id}");
-        
+
         // Check if user already has an active PAID subscription
         $activeSub = $user->activeSubscription;
         if ($activeSub && $activeSub->plan && $activeSub->plan->price > 0) {
@@ -75,26 +75,26 @@ class SubscriptionService
         }
 
         // Create Razorpay Customer if not exists
-        // (Assuming we store razorpay_customer_id in users table or retrieve it. 
+        // (Assuming we store razorpay_customer_id in users table or retrieve it.
         // For this MVP, let's assume we might create it on the fly or just use email)
-        // Ideally User model should have razorpay_customer_id. 
+        // Ideally User model should have razorpay_customer_id.
         // Let's create one if needed, but for 'createSubscription' API we usually need it.
-        
+
         // For manual upgrades (FEE => PRO/AGENCY, etc.), we do NOT offer a trial.
         // It begins immediately.
         $trialEndsAt = Carbon::now();
-        
+
         // Create actual Razorpay subscription starting in future
         // We first need a customer in Razorpay
-        
+
         // TODO: Ensure user has razorpay_customer_id in database if we want to reuse it.
         // For now, let's assume we create/fetch it.
-        
+
         // This is a simplified logic. In prod, update User model to store `razorpay_customer_id`.
         // Check if user already has a customer ID in any of their subscriptions
         $customerId = $user->subscriptions()->whereNotNull('razorpay_customer_id')->value('razorpay_customer_id');
 
-        if (!$customerId) {
+        if (! $customerId) {
             $customerId = $this->razorpayService->getOrCreateCustomer($user->name, $user->email);
         }
 
@@ -120,23 +120,23 @@ class SubscriptionService
     public function activateSubscription($razorpaySubscriptionId)
     {
         $subscription = Subscription::where('razorpay_subscription_id', $razorpaySubscriptionId)->first();
-        
-        if (!$subscription) {
+
+        if (! $subscription) {
             return;
         }
 
         // Fetch latest status from Razorpay to be sure
         try {
             $rzpSub = $this->razorpayService->fetchSubscription($razorpaySubscriptionId);
-            
+
             $subscription->update([
                 'status' => $rzpSub->status,
                 'current_period_start' => Carbon::createFromTimestamp($rzpSub->current_start),
                 'current_period_end' => Carbon::createFromTimestamp($rzpSub->current_end),
             ]);
-            
+
         } catch (Exception $e) {
-            Log::error('Failed to sync activated subscription: ' . $e->getMessage());
+            Log::error('Failed to sync activated subscription: '.$e->getMessage());
         }
     }
 
@@ -144,8 +144,8 @@ class SubscriptionService
     {
         $subscription = $user->activeSubscription;
 
-        if (!$subscription) {
-            throw new Exception("No active subscription found.");
+        if (! $subscription) {
+            throw new Exception('No active subscription found.');
         }
 
         $this->razorpayService->cancelSubscription($subscription->razorpay_subscription_id, true); // Cancel at cycle end
@@ -153,7 +153,7 @@ class SubscriptionService
         $subscription->update([
             'cancelled_at' => Carbon::now(),
         ]);
-        
+
         return $subscription;
     }
 
@@ -168,18 +168,18 @@ class SubscriptionService
             // Cancel the active subscription in Razorpay
             if ($activeSub->razorpay_subscription_id) {
                 try {
-                    // Cancel immediately or at cycle end? 
-                    // Usually for downgrade to free, we might want to let them finish their term 
+                    // Cancel immediately or at cycle end?
+                    // Usually for downgrade to free, we might want to let them finish their term
                     // OR cancel immediately. Let's cancel immediately for now as per requirement implication.
                     // If we want them to finish the term, we just set cancel_at_period_end = true
                     // and let the webhook handle the actual status change.
                     // BUT, if the UI says "Select Free" and we return "Success", the user expects it to be done.
-                    $this->razorpayService->cancelSubscription($activeSub->razorpay_subscription_id, false); 
+                    $this->razorpayService->cancelSubscription($activeSub->razorpay_subscription_id, false);
                 } catch (\Exception $e) {
                     // Log error but proceed to update local DB to reflect intent?
                     // Or fail? Best to log and proceed if possible, or rethrow.
-                    \Illuminate\Support\Facades\Log::error("Failed to cancel Razorpay subscription {$activeSub->razorpay_subscription_id}: " . $e->getMessage());
-                    // We might still want to mark it locally if we trust the intent. 
+                    \Illuminate\Support\Facades\Log::error("Failed to cancel Razorpay subscription {$activeSub->razorpay_subscription_id}: ".$e->getMessage());
+                    // We might still want to mark it locally if we trust the intent.
                     // But let's throw for now to be safe, or handle gracefully.
                 }
             }
@@ -191,23 +191,23 @@ class SubscriptionService
             ]);
         }
 
-        // Technically "Free" might not need a subscription record, 
-        // OR we create a specific record for the Free plan. 
+        // Technically "Free" might not need a subscription record,
+        // OR we create a specific record for the Free plan.
         // Based on PlanSeeder, Free is a plan.
         $freePlan = Plan::where('slug', 'free')->first();
-        
+
         if ($freePlan) {
-             // Create a local subscription record for Free just for tracking? 
-             // Or usually, no active subscription means free?
-             // Let's create one for consistency if the system relies on $user->activeSubscription to check limits.
-             // But usually systems rely on "No Paid Sub = Free".
-             // However, checks in User.php: 
-             // $subscription = $this->activeSubscription()->with('plan')->first();
-             // if (!$subscription) ... default to Free.
-             // So we actually DON'T need a row for Free plan necessarily.
-             // But if we want to be explicit:
-             
-             // return Subscription::create([...]);
+            // Create a local subscription record for Free just for tracking?
+            // Or usually, no active subscription means free?
+            // Let's create one for consistency if the system relies on $user->activeSubscription to check limits.
+            // But usually systems rely on "No Paid Sub = Free".
+            // However, checks in User.php:
+            // $subscription = $this->activeSubscription()->with('plan')->first();
+            // if (!$subscription) ... default to Free.
+            // So we actually DON'T need a row for Free plan necessarily.
+            // But if we want to be explicit:
+
+            // return Subscription::create([...]);
         }
 
         return $activeSub;
@@ -219,14 +219,14 @@ class SubscriptionService
     public function checkAndHandleTrialExpiry(User $user)
     {
         // 1. If already suspended, no need to check
-        if (!$user->is_active || $user->suspended_at) {
+        if (! $user->is_active || $user->suspended_at) {
             return;
         }
 
-        // 2. Check for any 'active' paid subscription
+        // 2. Check for any 'active' equivalent paid subscription
         $hasActivePaid = $user->subscriptions()
-            ->where('status', 'active')
-            ->whereHas('plan', function($query) {
+            ->whereIn('status', ['active', 'trialing', 'authenticated', 'pending', 'created', 'created'])
+            ->whereHas('plan', function ($query) {
                 $query->where('price', '>', 0);
             })
             ->exists();
@@ -250,5 +250,57 @@ class SubscriptionService
 
             \Illuminate\Support\Facades\Log::info("User ID {$user->id} suspended due to trial expiry.");
         }
+    }
+
+    /**
+     * Verify payment signature and activate subscription.
+     */
+    public function verifyAndActivateSubscription($userId, array $data)
+    {
+        $razorpaySubscriptionId = $data['razorpay_subscription_id'];
+        $razorpayPaymentId = $data['razorpay_payment_id'];
+        $razorpaySignature = $data['razorpay_signature'];
+
+        // 1. Verify Signature
+        $attributes = [
+            'razorpay_subscription_id' => $razorpaySubscriptionId,
+            'razorpay_payment_id' => $razorpayPaymentId,
+            'razorpay_signature' => $razorpaySignature,
+        ];
+
+        if (! $this->razorpayService->verifyPaymentSignature($attributes)) {
+            throw new Exception('Invalid payment signature.');
+        }
+
+        // 2. Fetch/Update local subscription
+        $subscription = Subscription::where('user_id', $userId)
+            ->where('razorpay_subscription_id', $razorpaySubscriptionId)
+            ->first();
+
+        if (! $subscription) {
+            throw new Exception('Subscription not found for this user.');
+        }
+
+        // 3. Sync with Razorpay to get accurate state/dates
+        try {
+            $rzpSub = $this->razorpayService->fetchSubscription($razorpaySubscriptionId);
+
+            $subscription->update([
+                'status' => $rzpSub->status,
+                'current_period_start' => ($rzpSub->current_start) ? Carbon::createFromTimestamp($rzpSub->current_start) : $subscription->current_period_start,
+                'current_period_end' => ($rzpSub->current_end) ? Carbon::createFromTimestamp($rzpSub->current_end) : $subscription->current_period_end,
+            ]);
+
+            // Sync trial end date if Razorpay provides it
+            $trialEnd = isset($rzpSub->trial_end) ? Carbon::createFromTimestamp($rzpSub->trial_end) : null;
+            $subscription->update(['trial_ends_at' => $trialEnd]);
+
+        } catch (Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Razorpay Sync Failed during verification: '.$e->getMessage());
+            // We still have valid signature, so we can mark it as active if sync fails
+            $subscription->update(['status' => 'active']);
+        }
+
+        return $subscription->load('plan');
     }
 }

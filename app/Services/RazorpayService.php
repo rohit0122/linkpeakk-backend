@@ -110,4 +110,15 @@ class RazorpayService
             return false;
         }
     }
+
+    public function verifyPaymentSignature($attributes)
+    {
+        try {
+            $this->api->utility->verifyPaymentSignature($attributes);
+            return true;
+        } catch (Exception $e) {
+            Log::error('Razorpay Payment Signature Verification Failed: ' . $e->getMessage());
+            return false;
+        }
+    }
 }

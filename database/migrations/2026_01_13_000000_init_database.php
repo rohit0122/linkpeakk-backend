@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -51,7 +51,7 @@ return new class extends Migration
 
         // Seed Plans Data
         $plans = [
-             [
+            [
                 'name' => 'DEMO',
                 'slug' => 'demo',
                 'razorpay_plan_id' => null,
@@ -61,10 +61,10 @@ return new class extends Migration
                 'trial_days' => 0,
                 'is_active' => true,
                 'features' => json_encode([
-                    'links' => 5, 
-                    'pages' => 1, 
-                    'allowedTemplates' => ['classic'], 
-                    'themes' => 'ALL', 
+                    'links' => 5,
+                    'pages' => 1,
+                    'allowedTemplates' => ['classic'],
+                    'themes' => 'ALL',
                     'analytics' => 7,
                     'customQR' => false,
                     'seo' => false,
@@ -83,10 +83,10 @@ return new class extends Migration
                 'trial_days' => 0,
                 'is_active' => true,
                 'features' => json_encode([
-                    'links' => 5, 
-                    'pages' => 1, 
-                    'allowedTemplates' => ['classic'], 
-                    'themes' => ['light', 'dark'], 
+                    'links' => 5,
+                    'pages' => 1,
+                    'allowedTemplates' => ['classic'],
+                    'themes' => ['light', 'dark'],
                     'analytics' => 7,
                     'customQR' => false,
                     'seo' => false,
@@ -98,17 +98,17 @@ return new class extends Migration
             [
                 'name' => 'PRO',
                 'slug' => 'pro',
-                'razorpay_plan_id' => 'plan_pro_id_placeholder',
+                'razorpay_plan_id' => 'plan_S3Si6GlKBSnioK',
                 'price' => 9.00,
                 'currency' => 'USD',
                 'billing_interval' => 'month',
                 'trial_days' => 7,
                 'is_active' => true,
                 'features' => json_encode([
-                    'links' => 1000, 
-                    'pages' => 1, 
-                    'allowedTemplates' => ['classic', 'bento', 'hero', 'influencer', 'sleek'], 
-                    'themes' => ['light', 'dark', 'cupcake', 'bumblebee', 'emerald', 'corporate', 'retro', 'cyberpunk', 'valentine', 'coffee'], 
+                    'links' => 1000,
+                    'pages' => 1,
+                    'allowedTemplates' => ['classic', 'bento', 'hero', 'influencer', 'sleek'],
+                    'themes' => ['light', 'dark', 'cupcake', 'bumblebee', 'emerald', 'corporate', 'retro', 'cyberpunk', 'valentine', 'coffee'],
                     'analytics' => 90,
                     'customQR' => true,
                     'seo' => true,
@@ -120,17 +120,17 @@ return new class extends Migration
             [
                 'name' => 'AGENCY',
                 'slug' => 'agency',
-                'razorpay_plan_id' => 'plan_agency_id_placeholder',
+                'razorpay_plan_id' => 'plan_S3SieAJbKmSdPh',
                 'price' => 49.00,
                 'currency' => 'USD',
                 'billing_interval' => 'month',
                 'trial_days' => 7,
                 'is_active' => true,
                 'features' => json_encode([
-                    'links' => 1000, 
-                    'pages' => 10, 
-                    'allowedTemplates' => 'ALL', 
-                    'themes' => 'ALL', 
+                    'links' => 1000,
+                    'pages' => 10,
+                    'allowedTemplates' => 'ALL',
+                    'themes' => 'ALL',
                     'analytics' => 9999,
                     'customQR' => true,
                     'seo' => true,
@@ -171,7 +171,7 @@ return new class extends Migration
         });
 
         // Ensure profile_image_blob is LONGBLOB for raw binary storage
-        DB::statement("ALTER TABLE bio_pages MODIFY profile_image_blob LONGBLOB");
+        DB::statement('ALTER TABLE bio_pages MODIFY profile_image_blob LONGBLOB');
 
         // 4. Links Table
         Schema::create('links', function (Blueprint $table) {
@@ -197,7 +197,7 @@ return new class extends Migration
             $table->foreignId('plan_id')->constrained()->onDelete('cascade');
             $table->string('razorpay_subscription_id')->nullable()->unique();
             $table->string('razorpay_customer_id')->nullable();
-            $table->string('status'); 
+            $table->string('status');
             $table->timestamp('current_period_start')->nullable();
             $table->timestamp('current_period_end')->nullable();
             $table->timestamp('trial_ends_at')->nullable();

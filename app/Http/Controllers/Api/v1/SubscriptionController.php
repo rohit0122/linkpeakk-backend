@@ -11,10 +11,12 @@ use Illuminate\Support\Facades\Auth;
 class SubscriptionController extends Controller
 {
     protected $subscriptionService;
+    protected $dashboardService;
 
-    public function __construct(SubscriptionService $subscriptionService)
+    public function __construct(SubscriptionService $subscriptionService, \App\Services\DashboardService $dashboardService)
     {
         $this->subscriptionService = $subscriptionService;
+        $this->dashboardService = $dashboardService;
     }
 
     public function status(Request $request)
@@ -26,10 +28,7 @@ class SubscriptionController extends Controller
             'success' => true,
             'message' => 'Subscription status retrieved successfully.',
             'data' => [
-                'plan' => $subscription ? $subscription->plan : null,
-                'subscription' => $subscription,
-                'is_active' => $subscription ? $subscription->isActive() : false,
-                'trial_ends_at' => $subscription ? $subscription->trial_ends_at : null,
+                'subscription' => $this->dashboardService->formatSubscription($user, $subscription),
             ]
         ]);
     }
@@ -69,16 +68,7 @@ class SubscriptionController extends Controller
                 'success' => true,
                 'message' => 'Plan selected successfully. Trial started.',
                 'data' => [
-                    'razorpay_subscription_id' => $subscription->razorpay_subscription_id,
-                    'plan' => [
-                        'name' => $plan->name,
-                        'price' => $plan->price,
-                    ],
-                    'prefill' => [
-                        'name' => $user->name,
-                        'email' => $user->email,
-                    ],
-                    'subscription' => $subscription,
+                    'subscription' => $this->dashboardService->formatSubscription($user, $subscription),
                 ]
             ]);
         } catch (\Throwable $e) {
@@ -101,7 +91,7 @@ class SubscriptionController extends Controller
                 'success' => true,
                 'message' => 'Subscription cancelled successfully.',
                 'data' => [
-                    'subscription' => $subscription
+                    'subscription' => $this->dashboardService->formatSubscription($user, $subscription)
                 ]
             ]);
         } catch (\Throwable $e) {
@@ -109,6 +99,38 @@ class SubscriptionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to cancel subscription: ' . $e->getMessage(),
+                'data' => []
+            ], 400);
+        }
+    }
+
+    public function verifyPayment(Request $request)
+    {
+        $request->validate([
+            'razorpay_subscription_id' => 'required|string',
+            'razorpay_payment_id' => 'required|string',
+            'razorpay_signature' => 'required|string',
+        ]);
+
+        try {
+            $subscription = $this->subscriptionService->verifyAndActivateSubscription(
+                Auth::id(),
+                $request->only(['razorpay_subscription_id', 'razorpay_payment_id', 'razorpay_signature'])
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment verified and subscription activated successfully.',
+                'data' => [
+                    'subscription' => $this->dashboardService->formatSubscription($request->user(), $subscription),
+                ]
+            ]);
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Verification Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to verify payment: ' . $e->getMessage(),
                 'data' => []
             ], 400);
         }

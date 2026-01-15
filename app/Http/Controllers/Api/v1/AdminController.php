@@ -24,7 +24,7 @@ class AdminController extends Controller
         
         // Paid users are those with an active or trialing subscription on a plan with price > 0
         $paidUsers = User::whereHas('subscriptions', function ($query) {
-            $query->whereIn('status', ['active', 'trialing'])
+            $query->whereIn('status', ['active', 'trialing', 'authenticated', 'pending'])
                   ->whereHas('plan', function ($q) {
                       $q->where('price', '>', 0);
                   });
@@ -34,7 +34,7 @@ class AdminController extends Controller
 
         // 2. Revenue (MRR)
         // Adjust price based on interval if necessary (currently assumes all are monthly based on seeder)
-        $mrr = Subscription::whereIn('status', ['active', 'trialing'])
+        $mrr = Subscription::whereIn('status', ['active', 'trialing', 'authenticated', 'pending'])
             ->join('plans', 'subscriptions.plan_id', '=', 'plans.id')
             ->select(DB::raw('SUM(CASE WHEN plans.billing_interval = "year" THEN plans.price / 12 ELSE plans.price END) as total'))
             ->value('total') ?? 0;
@@ -48,7 +48,7 @@ class AdminController extends Controller
         // 4. Chart Data: Plan Distribution
         $planDistribution = DB::table('plans')
             ->leftJoin('subscriptions', 'plans.id', '=', 'subscriptions.plan_id')
-            ->whereIn('subscriptions.status', ['active', 'trialing'])
+            ->whereIn('subscriptions.status', ['active', 'trialing', 'authenticated', 'pending'])
             ->select('plans.name as label', DB::raw('count(subscriptions.id) as value'))
             ->groupBy('plans.name')
             ->get();

@@ -2,18 +2,17 @@
 
 namespace App\Models;
 
+use App\Traits\FormattedResponseTrait;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-use App\Traits\FormattedResponseTrait;
-use Illuminate\Database\Eloquent\Casts\Attribute;
-
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasApiTokens, HasFactory, Notifiable, FormattedResponseTrait;
+    use FormattedResponseTrait, HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -71,7 +70,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function activeSubscription()
     {
-        return $this->hasOne(Subscription::class)->whereIn('status', ['active', 'trialing', 'pending'])->latestOfMany();
+        return $this->hasOne(Subscription::class)->whereIn('status', ['active', 'trialing', 'pending', 'authenticated', 'created'])->latestOfMany();
     }
 
     public function links()
@@ -87,21 +86,20 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Check if user can access a feature or is within limits.
      *
-     * @param string $feature Key in the features JSON (e.g., 'links')
-     * @param int|null $currentUsage Current usage count to check against limit
-     * @return bool
+     * @param  string  $feature  Key in the features JSON (e.g., 'links')
+     * @param  int|null  $currentUsage  Current usage count to check against limit
      */
     public function canAccessFeature(string $feature, $value = null): bool
     {
         $subscription = $this->activeSubscription()->with('plan')->first();
-        
-        if (!$subscription || !$subscription->plan) {
+
+        if (! $subscription || ! $subscription->plan) {
             $plan = \App\Models\Plan::where('slug', 'free')->first();
         } else {
             $plan = $subscription->plan;
         }
 
-        if (!$plan) {
+        if (! $plan) {
             return false;
         }
 
@@ -112,7 +110,7 @@ class User extends Authenticatable implements MustVerifyEmail
         $limit = $plan->features[$feature] ?? null;
 
         if ($limit === null) {
-            return false; 
+            return false;
         }
 
         if ($limit === 'ALL') {
@@ -139,8 +137,8 @@ class User extends Authenticatable implements MustVerifyEmail
     protected function avatarUrl(): Attribute
     {
         return Attribute::make(
-            get: fn ($value) => $this->avatar_url_blob 
-                ? 'data:image/webp;base64,' . base64_encode($this->avatar_url_blob) 
+            get: fn ($value) => $this->avatar_url_blob
+                ? 'data:image/webp;base64,'.base64_encode($this->avatar_url_blob)
                 : null,
         );
     }

@@ -54,6 +54,6 @@ class Subscription extends Model
 
     public function isActive()
     {
-        return in_array($this->status, ['active', 'trialing']);
+        return in_array($this->status, ['active', 'trialing', 'authenticated', 'pending']);
     }
 }

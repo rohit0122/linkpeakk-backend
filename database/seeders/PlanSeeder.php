@@ -10,7 +10,7 @@ class PlanSeeder extends Seeder
     /**
      * Run the database seeds.
      *
-     * IMPORTANT: Replace 'plan_pro_id_placeholder' and 'plan_agency_id_placeholder'
+     * IMPORTANT: Replace 'plan_S3Si6GlKBSnioK' and 'plan_S3SieAJbKmSdPh'
      * with real Razorpay Plan IDs from your dashboard for the subscription system to work.
      */
     public function run(): void
@@ -59,7 +59,7 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'PRO',
                 'slug' => 'pro',
-                'razorpay_plan_id' => 'plan_pro_id_placeholder',
+                'razorpay_plan_id' => 'plan_S3Si6GlKBSnioK',
                 'price' => 9.00,
                 'currency' => 'USD',
                 'billing_interval' => 'month',
@@ -79,7 +79,7 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'AGENCY',
                 'slug' => 'agency',
-                'razorpay_plan_id' => 'plan_agency_id_placeholder',
+                'razorpay_plan_id' => 'plan_S3SieAJbKmSdPh',
                 'price' => 49.00,
                 'currency' => 'USD',
                 'billing_interval' => 'month',
