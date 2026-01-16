@@ -46,6 +46,7 @@ Route::prefix('v1/public')->group(function () {
     Route::get('/pages/{id}/qrcode', [\App\Http\Controllers\Api\v1\QRCodeController::class, 'show']);
     Route::get('/pages/{id}/qrcode/svg', [\App\Http\Controllers\Api\v1\QRCodeController::class, 'svg']);
     Route::post('/contact', [\App\Http\Controllers\Api\v1\ContactController::class, 'submit']);
+    Route::post('/newsletter/subscribe', [\App\Http\Controllers\Api\v1\NewsletterController::class, 'subscribe']);
 
 });
 
@@ -131,6 +132,10 @@ Route::prefix('v1/admin')->middleware(['auth:sanctum', 'api.rate.limit:60,1'])->
 
     // Plans Management (Admin)
     Route::apiResource('plans', \App\Http\Controllers\Api\v1\Admin\PlanController::class);
+
+    // Newsletter Management (Admin)
+    Route::get('/newsletter/subscribers', [\App\Http\Controllers\Api\v1\Admin\NewsletterController::class, 'index']);
+    Route::delete('/newsletter/subscribers/{id}', [\App\Http\Controllers\Api\v1\Admin\NewsletterController::class, 'destroy']);
 });
 
 // Razorpay Webhook

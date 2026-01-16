@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\FormattedResponseTrait;
 
 class Plan extends Model
 {
-    use HasFactory;
+    use HasFactory, FormattedResponseTrait;
 
     protected $fillable = [
         'name',

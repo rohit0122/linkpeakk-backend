@@ -113,6 +113,13 @@ All image fields (e.g., `avatar_url`, `profile_image`) return **Absolute URLs** 
 
 - **Response:** SVG Image (Content-Type: image/svg+xml)
 
+### Newsletter Subscription
+
+`POST /newsletter/subscribe`
+
+- **Fields:** `email`: string (required)
+- **Response:** Success message.
+
 ---
 
 ## 3. Tracking APIs
@@ -281,7 +288,19 @@ All image fields (e.g., `avatar_url`, `profile_image`) return **Absolute URLs** 
 - `PUT /admin/plans/{id}`: Update plan details or features.
 - `DELETE /admin/plans/{id}`: Delete a plan (prevented if plan has active users).
 
-#### **Plan Object Fields**
+### Newsletter Management (Admin)
+
+- `GET /admin/newsletter/subscribers`: List all newsletter subscribers.
+- `DELETE /admin/newsletter/subscribers/{id}`: Remove a subscriber.
+
+#### **Newsletter Subscriber Object Fields**
+
+| Field        | Type   | Description             |
+| :----------- | :----- | :---------------------- |
+| `id`         | int    | Unique ID               |
+| `email`      | string | Subscriber email        |
+| `created_at` | string | `Jan 16, 2026, 03:30PM` |
+| `updated_at` | string | `Jan 16, 2026, 03:30PM` |
 
 | Field              | Type    | Description                                      |
 | :----------------- | :------ | :----------------------------------------------- |
