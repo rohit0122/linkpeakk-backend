@@ -21,6 +21,7 @@ yarn-error.log
 /.next
 /app-debug.log
 /debug.log
+/public/.htaccess
 
 # Laravel-specific
 /storage/app/public/*

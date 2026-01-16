@@ -16,6 +16,7 @@ class ContactController extends Controller
      */
     public function submit(Request $request)
     {
+
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
@@ -55,7 +56,7 @@ class ContactController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send message: ' . $e->getMessage(),
+                'message' => 'Failed to send message: '.$e->getMessage(),
                 'data' => [],
             ], 500);
         }

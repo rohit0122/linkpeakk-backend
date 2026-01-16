@@ -45,6 +45,8 @@ Route::prefix('v1/public')->group(function () {
     Route::post('/leads', [\App\Http\Controllers\Api\v1\LeadController::class, 'store']);
     Route::get('/pages/{id}/qrcode', [\App\Http\Controllers\Api\v1\QRCodeController::class, 'show']);
     Route::get('/pages/{id}/qrcode/svg', [\App\Http\Controllers\Api\v1\QRCodeController::class, 'svg']);
+    Route::post('/contact', [\App\Http\Controllers\Api\v1\ContactController::class, 'submit']);
+
 });
 
 Route::prefix('v1/track')->group(function () {
@@ -97,7 +99,6 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'api.rate.limit:60,1'])->group(
     Route::delete('/settings/account', [\App\Http\Controllers\Api\v1\SettingsController::class, 'deleteAccount']);
 
     // Support
-    Route::post('/contact', [\App\Http\Controllers\Api\v1\ContactController::class, 'submit']);
     Route::apiResource('tickets', \App\Http\Controllers\Api\v1\TicketController::class);
 
     // Subscriptions
