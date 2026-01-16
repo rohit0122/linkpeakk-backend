@@ -63,7 +63,7 @@ class LinkController extends Controller
     {
         $link = $request->user()->links()->findOrFail($id);
 
-        $request->validate([
+        $validated = $request->validate([
             'title' => 'sometimes|string|max:255',
             'url' => 'sometimes|url',
             'icon' => 'sometimes|nullable|string|max:10',
@@ -71,7 +71,7 @@ class LinkController extends Controller
             'order' => 'sometimes|integer',
         ]);
 
-        $link->update($request->all());
+        $link->update($validated);
 
         // Return all links for the page
         $allLinks = $link->bioPage->links()
