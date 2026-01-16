@@ -9,9 +9,9 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ContactAdminEmail extends Mailable implements ShouldQueue
+class ContactAdminEmail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use SerializesModels;
 
     public $name;
     public $email;
