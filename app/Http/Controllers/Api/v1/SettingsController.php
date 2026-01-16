@@ -9,6 +9,10 @@ use Illuminate\Validation\Rule;
 
 use App\Traits\ImageUploadTrait;
 
+use Illuminate\Support\Facades\Mail;
+use App\Mail\AccountDeletedUserEmail;
+use App\Mail\AccountDeletedAdminEmail;
+
 class SettingsController extends Controller
 {
     use ImageUploadTrait;
@@ -117,11 +121,27 @@ class SettingsController extends Controller
                 $subscription->delete();
             }
 
+            // Capture info for email
+            $name = $user->name;
+            $email = $user->email;
+
             // Finally delete the user
             $user->tokens()->delete(); // Revoke all tokens
             $user->delete();
 
             \DB::commit();
+
+            // Send emails after successful commit
+            try {
+                // Send to user
+                Mail::to($email)->send(new AccountDeletedUserEmail($name));
+                
+                // Send to admin
+                Mail::to(config('mail.from.address'))->send(new AccountDeletedAdminEmail($name, $email));
+            } catch (\Exception $e) {
+                \Log::error("Failed to send account deletion emails: " . $e->getMessage());
+            }
+
 
             return response()->json([
                 'success' => true,
