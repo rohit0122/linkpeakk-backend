@@ -37,7 +37,7 @@ class ApiResponse
             'success' => false,
             'message' => $message,
             'data' => $data ?? []
-        ], 200);
+        ], $code);
     }
 
     /**
@@ -55,7 +55,7 @@ class ApiResponse
             'data' => [
                 'errors' => $errors
             ]
-        ], 200);
+        ], 422);
     }
 
     /**
@@ -70,7 +70,7 @@ class ApiResponse
             'success' => false,
             'message' => $message,
             'data' => []
-        ], 200);
+        ], 404);
     }
 
     /**
@@ -85,7 +85,7 @@ class ApiResponse
             'success' => false,
             'message' => $message,
             'data' => []
-        ], 200);
+        ], 401);
     }
 
     /**
@@ -100,7 +100,7 @@ class ApiResponse
             'success' => false,
             'message' => $message,
             'data' => []
-        ], 200);
+        ], 403);
     }
 
     /**

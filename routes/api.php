@@ -128,6 +128,9 @@ Route::prefix('v1/admin')->middleware(['auth:sanctum', 'api.rate.limit:60,1'])->
     Route::get('/tickets/{id}', [\App\Http\Controllers\Api\v1\TicketController::class, 'adminShow']);
     Route::put('/tickets/{id}', [\App\Http\Controllers\Api\v1\TicketController::class, 'adminUpdate']);
     Route::delete('/tickets/{id}', [\App\Http\Controllers\Api\v1\TicketController::class, 'adminDestroy']);
+
+    // Plans Management (Admin)
+    Route::apiResource('plans', \App\Http\Controllers\Api\v1\Admin\PlanController::class);
 });
 
 // Razorpay Webhook

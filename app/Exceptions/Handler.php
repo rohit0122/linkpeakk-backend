@@ -100,14 +100,14 @@ class Handler extends ExceptionHandler
         // Model Not Found Exception
         if ($e instanceof ModelNotFoundException) {
             return ApiResponse::notFound(
-                'Resource not found'
+                'The requested resource was not found.'
             );
         }
 
         // Not Found HTTP Exception
         if ($e instanceof NotFoundHttpException) {
             return ApiResponse::notFound(
-                'Endpoint not found'
+                'The endpoint you are trying to reach does not exist.'
             );
         }
 
@@ -127,6 +127,15 @@ class Handler extends ExceptionHandler
             );
         }
 
+        // HTTP Exception (Standard Laravel/Symfony HTTP exceptions)
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpException) {
+            return ApiResponse::error(
+                $e->getMessage() ?: 'An error occurred',
+                [],
+                $e->getStatusCode()
+            );
+        }
+
         // Generic Exception
         return $this->handleGenericException($e);
     }
@@ -139,7 +148,8 @@ class Handler extends ExceptionHandler
      */
     protected function handleGenericException(Throwable $e): JsonResponse
     {
-        // In production, hide sensitive error details
+        // In production, we provide a clean, sensible message
+        // In local development, we show everything for debugging
         if (config('app.debug')) {
             return ApiResponse::error(
                 $e->getMessage() ?: 'An error occurred',
@@ -147,18 +157,20 @@ class Handler extends ExceptionHandler
                     'exception' => get_class($e),
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => explode("\n", $e->getTraceAsString()) // Array for better readability
                 ],
                 500
             );
         }
 
-        // Production error response
-        return ApiResponse::error(
-            'An error occurred while processing your request',
-            [],
-            500
-        );
+        // Production error response: Use the exception message if it's safe and provided
+        // Otherwise, use a standard professional message.
+        $message = $e->getMessage();
+        if (empty($message) || str_contains($message, 'SQL') || str_contains($message, 'PDOException')) {
+            $message = 'We encountered an error while processing your request. Please try again later.';
+        }
+
+        return ApiResponse::error($message, [], 500);
     }
 
     /**

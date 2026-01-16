@@ -2,7 +2,6 @@
 
 namespace App\Mail;
 
-use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -13,7 +12,9 @@ class AccountDeletedAdminEmail extends Mailable
     use SerializesModels;
 
     public $name;
+
     public $email;
+
     public $deletedAt;
 
     /**
@@ -32,7 +33,7 @@ class AccountDeletedAdminEmail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: '⚠️ Account Deleted: ' . $this->name,
+            subject: '⚠️ Account Deleted: '.$this->name,
         );
     }
 
@@ -48,7 +49,7 @@ class AccountDeletedAdminEmail extends Mailable
                 'email' => $this->email,
                 'deletedAt' => $this->deletedAt,
                 'title' => 'User Account Deleted',
-                'previewText' => "A user has permanently deleted their account: " . $this->email,
+                'previewText' => 'A user has permanently deleted their account: '.$this->email,
             ],
         );
     }

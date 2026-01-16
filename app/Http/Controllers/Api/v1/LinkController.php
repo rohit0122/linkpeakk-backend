@@ -31,7 +31,7 @@ class LinkController extends Controller
             'pageId' => 'required|exists:bio_pages,id',
             'title' => 'required|string|max:255',
             'url' => 'required|url',
-            'icon' => 'sometimes|string|max:10',
+            'icon' => 'sometimes|nullable|string|max:10',
         ]);
 
         $user = $request->user();
@@ -66,7 +66,7 @@ class LinkController extends Controller
         $request->validate([
             'title' => 'sometimes|string|max:255',
             'url' => 'sometimes|url',
-            'icon' => 'sometimes|string|max:10',
+            'icon' => 'sometimes|nullable|string|max:10',
             'is_active' => 'sometimes|boolean',
             'order' => 'sometimes|integer',
         ]);

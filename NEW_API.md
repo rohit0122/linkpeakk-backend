@@ -271,3 +271,28 @@ All image fields (e.g., `avatar_url`, `profile_image`) return **Absolute URLs** 
 - `GET /admin/tickets/{id}`: View any ticket details (includes user info).
 - `PUT /admin/tickets/{id}`: Update status, priority, or category.
 - `DELETE /admin/tickets/{id}`: Delete any ticket.
+
+### Subscription Plan Management (Admin)
+
+- `GET /admin/plans`: List all subscription plans.
+- `POST /admin/plans`: Create a new plan.
+  - **Fields:** `name`, `slug` (optional), `razorpay_plan_id` (optional), `price`, `currency`, `billing_interval` (month/year), `trial_days`, `is_active`, `features` (json/array).
+- `GET /admin/plans/{id}`: View specific plan details.
+- `PUT /admin/plans/{id}`: Update plan details or features.
+- `DELETE /admin/plans/{id}`: Delete a plan (prevented if plan has active users).
+
+#### **Plan Object Fields**
+
+| Field              | Type    | Description                                      |
+| :----------------- | :------ | :----------------------------------------------- |
+| `id`               | int     | Unique ID                                        |
+| `name`             | string  | Plan display name (e.g., "PRO")                  |
+| `slug`             | string  | URL-friendly identifier                          |
+| `razorpay_plan_id` | string  | Razorpay dashboard plan ID                       |
+| `price`            | decimal | Subscription price                               |
+| `currency`         | string  | e.g., "USD", "INR"                               |
+| `billing_interval` | string  | `month`, `year`                                  |
+| `trial_days`       | int     | Number of free trial days                        |
+| `is_active`        | boolean | Visibility status                                |
+| `features`         | json    | Structured limits (links, pages, templates, etc) |
+| `created_at`       | string  | `Jan 16, 2026, 03:30PM`                          |
