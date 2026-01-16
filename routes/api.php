@@ -138,5 +138,5 @@ Route::prefix('v1/admin')->middleware(['auth:sanctum', 'api.rate.limit:60,1'])->
     Route::delete('/newsletter/subscribers/{id}', [\App\Http\Controllers\Api\v1\Admin\NewsletterController::class, 'destroy']);
 });
 
-// Razorpay Webhook
-Route::post('/api/v1/payment/callback', [\App\Http\Controllers\Api\webhooks\RazorpayWebhookController::class, 'handle']);
+// Razorpay Webhook (Full path: /api/v1/payment/callback)
+Route::post('/v1/payment/callback', [\App\Http\Controllers\Api\webhooks\RazorpayWebhookController::class, 'handle']);

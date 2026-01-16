@@ -174,7 +174,7 @@ class ExampleController extends BaseApiController
      */
     public function unauthorized(): JsonResponse
     {
-        return $this->unauthorized('You must be logged in to access this resource');
+        return $this->unauthorizedResponse('You must be logged in to access this resource');
     }
 
     /**
@@ -184,7 +184,7 @@ class ExampleController extends BaseApiController
      */
     public function forbidden(): JsonResponse
     {
-        return $this->forbidden('You do not have permission to access this resource');
+        return $this->forbiddenResponse('You do not have permission to access this resource');
     }
 
     /**
@@ -194,6 +194,6 @@ class ExampleController extends BaseApiController
      */
     public function error(): JsonResponse
     {
-        return $this->error('Something went wrong while processing your request');
+        return $this->errorResponse('Something went wrong while processing your request');
     }
 }

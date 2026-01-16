@@ -18,7 +18,7 @@ class RazorpayWebhookController extends Controller
     public function handle(Request $request)
     {
         $this->webhookService->handle($request);
-        
+
         return response()->json(['status' => 'ok']);
     }
 }
