@@ -24,11 +24,15 @@ class AnalyticsController extends Controller
         $page = $request->user()->bioPages()->findOrFail($pageId);
 
         $stats = $page->links()
-            ->selectRaw('SUM(clicks) as total_clicks, SUM(unique_clicks) as unique_clicks, COUNT(CASE WHEN is_active = 1 THEN 1 END) as active_count')
+            ->selectRaw('SUM(clicks) as aggregated_clicks, SUM(unique_clicks) as aggregated_unique_clicks, COUNT(CASE WHEN is_active = 1 THEN 1 END) as active_count')
             ->first();
 
+        // Fallback for null values if no links exist
+        $totalClicks = (int) ($stats->aggregated_clicks ?? 0);
+        $uniqueClicks = (int) ($stats->aggregated_unique_clicks ?? 0);
+        $activeLinks = (int) ($stats->active_count ?? 0);
+
         $totalViews = $page->views;
-        $totalClicks = (int) $stats->total_clicks;
         $avgCTR = $totalViews > 0 ? round(($totalClicks / $totalViews) * 100, 2) : 0;
 
         return ApiResponse::success([
@@ -36,9 +40,9 @@ class AnalyticsController extends Controller
                 'total_views' => $totalViews,
                 'unique_views' => $page->unique_views,
                 'total_clicks' => $totalClicks,
-                'unique_clicks' => (int) $stats->unique_clicks,
+                'unique_clicks' => $uniqueClicks,
                 'total_likes' => $page->likes,
-                'total_active_links' => (int) $stats->active_count,
+                'total_active_links' => $activeLinks,
                 'avg_ctr' => $avgCTR // Percentage
             ]
         ], 'Lifetime stats retrieved successfully');
@@ -111,33 +115,52 @@ class AnalyticsController extends Controller
     private function getSummaryChartData($pageId, $startDate, $aggregation, $range)
     {
         $query = Analytics::where('bio_page_id', $pageId)
-            ->where('date', '>=', $startDate);
-
-        $format = $this->getSqlDateFormat($aggregation);
-
-        $results = $query->select(
-            'date',
-            DB::raw("DATE_FORMAT(date, '$format') as label"),
-            DB::raw("SUM(CASE WHEN type = 'view' THEN count ELSE 0 END) as total_views"),
-            DB::raw("SUM(CASE WHEN type = 'view' THEN unique_count ELSE 0 END) as unique_views"),
-            DB::raw("SUM(CASE WHEN type = 'click' THEN count ELSE 0 END) as total_clicks"),
-            DB::raw("SUM(CASE WHEN type = 'click' THEN unique_count ELSE 0 END) as unique_clicks")
-        )
-        ->groupBy('date', 'label')
-        ->orderBy('date')
-        ->get()
-        ->map(function($item) {
-            // Remove date from response, keep only label
-            unset($item->date);
-            return $item;
-        });
+            ->where('date', '>=', $startDate)
+            ->get();
 
         // If no data, return empty structure for the date range
-        if ($results->isEmpty()) {
+        if ($query->isEmpty()) {
             return $this->generateEmptyChartData($range, $aggregation);
         }
 
-        return $results;
+        // Group by label in PHP
+        $grouped = $query->groupBy(function ($item) use ($aggregation) {
+            return $this->formatChartLabel(Carbon::parse($item->date), $aggregation);
+        });
+
+        $results = [];
+        $labels = $this->generateLabels($range, $aggregation);
+
+        foreach ($labels as $label) {
+            $group = $grouped->get($label);
+            
+            $totalViews = 0;
+            $uniqueViews = 0;
+            $totalClicks = 0;
+            $uniqueClicks = 0;
+
+            if ($group) {
+                foreach ($group as $item) {
+                    if ($item->type === 'view') {
+                        $totalViews += $item->count;
+                        $uniqueViews += $item->unique_count;
+                    } elseif ($item->type === 'click') {
+                        $totalClicks += $item->count;
+                        $uniqueClicks += $item->unique_count;
+                    }
+                }
+            }
+
+            $results[] = [
+                'label' => $label,
+                'total_views' => $totalViews,
+                'unique_views' => $uniqueViews,
+                'total_clicks' => $totalClicks,
+                'unique_clicks' => $uniqueClicks,
+            ];
+        }
+
+        return collect($results);
     }
 
     private function getDetailedLinksChartData($pageId, $startDate, $aggregation, $range)
@@ -148,52 +171,75 @@ class AnalyticsController extends Controller
         $query = Analytics::where('bio_page_id', $pageId)
             ->where('date', '>=', $startDate)
             ->whereNotNull('link_id')
-            ->with('link:id,title');
-
-        $format = $this->getSqlDateFormat($aggregation);
-
-        $results = $query->select(
-            'date',
-            DB::raw("DATE_FORMAT(date, '$format') as label"),
-            'link_id',
-            DB::raw("SUM(count) as total_clicks"),
-            DB::raw("SUM(unique_count) as unique_clicks")
-        )
-        ->groupBy('date', 'label', 'link_id')
-        ->orderBy('date')
-        ->get();
+            ->with('link:id,title')
+            ->get();
 
         // If no data, return empty structure with all links
-        if ($results->isEmpty()) {
+        if ($query->isEmpty()) {
             return $this->generateEmptyLinksChartData($range, $aggregation, $page);
         }
 
-        // Pivot the data to match expected response format
-        $pivot = [];
-        foreach ($results as $row) {
-            $label = $row->label;
-            $linkTitle = $row->link->title ?? 'Unknown Link';
-            
-            if (!isset($pivot[$label])) {
-                $pivot[$label] = ['label' => $label];
+        // Group by label in PHP
+        $grouped = $query->groupBy(function ($item) use ($aggregation) {
+            return $this->formatChartLabel(Carbon::parse($item->date), $aggregation);
+        });
+
+        $labels = $this->generateLabels($range, $aggregation);
+        $results = [];
+
+        foreach ($labels as $label) {
+            $group = $grouped->get($label);
+            $dayData = ['label' => $label];
+
+            // Initialize all links with 0
+            if ($page && $page->links) {
+                foreach ($page->links as $link) {
+                    $dayData[$link->title] = [
+                        'total_clicks' => 0,
+                        'unique_clicks' => 0,
+                    ];
+                }
             }
-            $pivot[$label][$linkTitle] = [
-                'total_clicks' => (int)$row->total_clicks,
-                'unique_clicks' => (int)$row->unique_clicks
-            ];
+
+            if ($group) {
+                foreach ($group as $item) {
+                    $linkTitle = $item->link->title ?? 'Unknown Link';
+                    // Initialize if not present (e.g., link deleted but in history)
+                    if (!isset($dayData[$linkTitle])) {
+                        $dayData[$linkTitle] = [
+                            'total_clicks' => 0,
+                            'unique_clicks' => 0,
+                        ];
+                    }
+                    
+                    $dayData[$linkTitle]['total_clicks'] += $item->count;
+                    $dayData[$linkTitle]['unique_clicks'] += $item->unique_count;
+                }
+            }
+            
+            $results[] = $dayData;
         }
 
-        return array_values($pivot);
+        return $results;
     }
 
-    private function getSqlDateFormat($aggregation)
-    {
-        return match ($aggregation) {
-            'daily' => '%b %d',
-            'weekly' => '%b W%u', // e.g., "Jan W01"
-            'monthly' => '%b %Y',
-            default => '%b %d',
+    private function generateLabels($range, $aggregation) {
+        $days = match ($range) {
+            7 => 7,
+            15 => 15,
+            30 => 30,
+            90 => 90,
+            180 => 180,
+            9999 => 365,
+            default => 7,
         };
+
+        $labels = [];
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i);
+            $labels[] = $this->formatChartLabel($date, $aggregation);
+        }
+        return $labels;
     }
 
     /**
