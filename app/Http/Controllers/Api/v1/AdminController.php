@@ -61,10 +61,18 @@ class AdminController extends Controller
 
         // 6. Growth Charts (Keep existing logic but format for frontend)
         $userGrowth = User::where('created_at', '>=', now()->subDays(30))
-            ->select(DB::raw("DATE(created_at) as date"), DB::raw("DATE_FORMAT(created_at, '%b %d') as label"), DB::raw('count(*) as count'))
-            ->groupBy('date', 'label')
-            ->orderBy('date')
-            ->get();
+            ->select(DB::raw("DATE(created_at) as date_val"), DB::raw('count(*) as count'))
+            ->groupBy('date_val')
+            ->orderBy('date_val')
+            ->get()
+            ->map(function ($item) {
+                $date = Carbon::parse($item->date_val);
+                return [
+                    'label' => $date->format('M d'),
+                    'date' => $date->startOfDay()->format('Y-m-d\TH:i:s\Z'),
+                    'count' => $item->count
+                ];
+            });
 
         return ApiResponse::success([
             'metrics' => [

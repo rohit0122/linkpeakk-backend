@@ -41,7 +41,7 @@ class BioPageController extends Controller
 
         $user = $request->user();
 
-        if (! $user->canAccessFeature('pages', $user->bioPages()->count())) {
+        if (! $user->canAccessFeature('pages', $user->bioPages()->count() + 1)) {
             return ApiResponse::error('Plan limit reached for pages. Please upgrade.', 403);
         }
 

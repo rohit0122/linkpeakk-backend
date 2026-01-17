@@ -129,9 +129,10 @@ class AnalyticsController extends Controller
         });
 
         $results = [];
-        $labels = $this->generateLabels($range, $aggregation);
+        $chartDates = $this->generateChartDates($range, $aggregation);
 
-        foreach ($labels as $label) {
+        foreach ($chartDates as $dateInfo) {
+            $label = $dateInfo['label'];
             $group = $grouped->get($label);
             
             $totalViews = 0;
@@ -153,6 +154,7 @@ class AnalyticsController extends Controller
 
             $results[] = [
                 'label' => $label,
+                'date' => $dateInfo['date'],
                 'total_views' => $totalViews,
                 'unique_views' => $uniqueViews,
                 'total_clicks' => $totalClicks,
@@ -184,12 +186,16 @@ class AnalyticsController extends Controller
             return $this->formatChartLabel(Carbon::parse($item->date), $aggregation);
         });
 
-        $labels = $this->generateLabels($range, $aggregation);
+        $chartDates = $this->generateChartDates($range, $aggregation);
         $results = [];
 
-        foreach ($labels as $label) {
+        foreach ($chartDates as $dateInfo) {
+            $label = $dateInfo['label'];
             $group = $grouped->get($label);
-            $dayData = ['label' => $label];
+            $dayData = [
+                'label' => $label,
+                'date' => $dateInfo['date']
+            ];
 
             // Initialize all links with 0
             if ($page && $page->links) {
@@ -212,8 +218,8 @@ class AnalyticsController extends Controller
                         ];
                     }
                     
-                    $dayData[$linkTitle]['total_clicks'] += $item->count;
-                    $dayData[$linkTitle]['unique_clicks'] += $item->unique_count;
+                    $dayData[$linkTitle]['total_clicks'] += (int)$item->count;
+                    $dayData[$linkTitle]['unique_clicks'] += (int)$item->unique_count;
                 }
             }
             
@@ -223,7 +229,7 @@ class AnalyticsController extends Controller
         return $results;
     }
 
-    private function generateLabels($range, $aggregation) {
+    private function generateChartDates($range, $aggregation) {
         $days = match ($range) {
             7 => 7,
             15 => 15,
@@ -234,12 +240,15 @@ class AnalyticsController extends Controller
             default => 7,
         };
 
-        $labels = [];
+        $dates = [];
         for ($i = $days - 1; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i);
-            $labels[] = $this->formatChartLabel($date, $aggregation);
+            $dates[] = [
+                'label' => $this->formatChartLabel($date, $aggregation),
+                'date' => $date->startOfDay()->format('Y-m-d\TH:i:s\Z')
+            ];
         }
-        return $labels;
+        return $dates;
     }
 
     /**
@@ -282,14 +291,13 @@ class AnalyticsController extends Controller
             default => 7,
         };
 
+        $chartDates = $this->generateChartDates($range, $aggregation);
         $data = [];
         
-        for ($i = $days - 1; $i >= 0; $i--) {
-            $date = Carbon::now()->subDays($i);
-            $label = $this->formatChartLabel($date, $aggregation);
-            
+        foreach ($chartDates as $dateInfo) {
             $data[] = [
-                'label' => $label,
+                'label' => $dateInfo['label'],
+                'date' => $dateInfo['date'],
                 'total_views' => 0,
                 'unique_views' => 0,
                 'total_clicks' => 0,
@@ -319,13 +327,14 @@ class AnalyticsController extends Controller
             default => 7,
         };
 
+        $chartDates = $this->generateChartDates($range, $aggregation);
         $data = [];
         
-        for ($i = $days - 1; $i >= 0; $i--) {
-            $date = Carbon::now()->subDays($i);
-            $label = $this->formatChartLabel($date, $aggregation);
-            
-            $dayData = ['label' => $label];
+        foreach ($chartDates as $dateInfo) {
+            $dayData = [
+                'label' => $dateInfo['label'],
+                'date' => $dateInfo['date']
+            ];
             
             // Add each link with zero clicks
             foreach ($page->links as $link) {

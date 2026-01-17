@@ -37,7 +37,7 @@ class LinkController extends Controller
         $user = $request->user();
         $page = $user->bioPages()->findOrFail($request->pageId);
 
-        if (!$user->canAccessFeature('links', $page->links()->count())) {
+        if (!$user->canAccessFeature('links', $page->links()->count() + 1)) {
             return ApiResponse::error('Plan limit reached. Upgrade to create more links.', 403);
         }
 

@@ -12,7 +12,7 @@ trait FormattedResponseTrait
      */
     protected function serializeDate(\DateTimeInterface $date)
     {
-        return $date->format('M d, Y, h:iA');
+        return $date->format('Y-m-d\TH:i:s\Z');
     }
 
     /**
@@ -20,7 +20,9 @@ trait FormattedResponseTrait
      */
     public function getAbsoluteUrl(?string $path): ?string
     {
-        if (!$path) return null;
+        if (! $path) {
+            return null;
+        }
 
         // If it's already an absolute URL, return it
         if (filter_var($path, FILTER_VALIDATE_URL)) {
@@ -28,7 +30,7 @@ trait FormattedResponseTrait
         }
 
         if (str_starts_with($path, 'api/')) {
-            return config('app.public_url') . '/' . $path;
+            return config('app.public_url').'/'.$path;
         }
 
         // Storage::url now uses LARAVEL_BACKEND_URL via config/filesystems.php

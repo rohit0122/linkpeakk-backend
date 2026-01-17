@@ -119,7 +119,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
         // Handle numeric limits (usage checks)
         if (is_numeric($value) && is_numeric($limit)) {
-            return $value < $limit;
+            return $value <= $limit;
         }
 
         // Handle list-based features (e.g., allowedTemplates, themes)

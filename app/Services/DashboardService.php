@@ -137,7 +137,7 @@ class DashboardService
             'status' => $subscription->status,
             'plan_name' => $subscription->plan->name,
             'razorpay_subscription_id' => $subscription->razorpay_subscription_id,
-            'expiry_date' => $subscription->current_period_end ? $subscription->current_period_end->format('M d, Y, h:iA') : 'Never',
+            'expiry_date' => $subscription->current_period_end ? $subscription->current_period_end->format('Y-m-d\TH:i:s\Z') : 'Never',
             'is_trial' => $subscription->trial_ends_at && $subscription->trial_ends_at->isFuture(),
             'is_paid' => $subscription->plan->price > 0 && in_array($subscription->status, ['active', 'trialing', 'authenticated']),
             'formatted_status' => $statusLabel,
