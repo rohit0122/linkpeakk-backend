@@ -242,11 +242,23 @@ class SubscriptionService
             ->exists();
 
         if ($hasExpiredTrial) {
+            // Get the expired subscription for email context
+            $expiredSubscription = $user->subscriptions()
+                ->where('status', 'trialing')
+                ->where('trial_ends_at', '<', now())
+                ->with('plan')
+                ->first();
+
             $user->update([
                 'is_active' => false,
                 'suspended_at' => now(),
                 'suspension_reason' => 'Your trial period has expired. Please contact support to reactivate your account and upgrade to a paid plan.',
             ]);
+
+            // Send notification email
+            if ($expiredSubscription) {
+                $user->notify(new \App\Notifications\TrialExpiredNotification($expiredSubscription));
+            }
 
             \Illuminate\Support\Facades\Log::info("User ID {$user->id} suspended due to trial expiry.");
         }

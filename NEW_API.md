@@ -302,6 +302,129 @@ All image fields (e.g., `avatar_url`, `profile_image`) return **Absolute URLs** 
 | `created_at` | string | `Jan 16, 2026, 03:30PM` |
 | `updated_at` | string | `Jan 16, 2026, 03:30PM` |
 
+### Subscription Management (Admin)
+
+#### List All Subscriptions
+
+`GET /admin/subscriptions`
+
+- **Response:** Paginated list of all subscriptions with user and plan details.
+- **Includes:** `user` (id, name, email), `plan` (name, price, billing_interval), subscription status, trial dates, period dates.
+
+#### Sync Subscriptions with Razorpay
+
+`POST /admin/subscriptions/sync`
+
+- **Description:** Manually trigger synchronization of all local subscriptions with Razorpay.
+- **Request Body:** None required (empty body).
+- **Response:**
+  ```json
+  {
+    "success": true,
+    "message": "Subscriptions synchronized with Razorpay successfully",
+    "data": {
+      "total": 10,
+      "synced": 9,
+      "failed": 1,
+      "errors": ["Sub ID sub_xxx: Subscription not found in Razorpay"]
+    }
+  }
+  ```
+- **Use Case:** Sync old data or missed webhook events.
+
+---
+
+## 6. Razorpay Webhook
+
+**Endpoint:** `POST /api/v1/payment/callback`
+
+- **Description:** Receives webhook events from Razorpay for subscription lifecycle management.
+- **Authentication:** Verified using `X-Razorpay-Signature` header and webhook secret.
+- **Supported Events:**
+  - `subscription.authenticated` - Initial payment authorized
+  - `subscription.activated` - Subscription activated
+  - `subscription.charged` - Recurring payment successful
+  - `subscription.cancelled` - Subscription cancelled
+  - `subscription.halted` - Subscription halted due to payment failure
+  - `subscription.expired` - Subscription expired
+- **Idempotency:** Uses `event_id` to prevent duplicate processing.
+- **Logging:** All events logged in `webhook_logs` table.
+
+**Webhook URL Configuration:**
+Set this URL in your Razorpay Dashboard:
+
+```
+https://your-domain.com/api/v1/payment/callback
+```
+
+**Environment Variables Required:**
+
+- `RAZORPAY_KEY_ID`
+- `RAZORPAY_KEY_SECRET`
+- `RAZORPAY_WEBHOOK_SECRET`
+
+---
+
+## 7. Automated Trial Expiry System
+
+The system automatically manages trial periods with the following features:
+
+### Daily Scheduled Commands
+
+These commands run automatically every day via Laravel scheduler:
+
+#### 1. Check Trial Expiry
+
+**Command:** `php artisan subscriptions:check-trial-expiry`
+
+- Checks all active users for expired trials
+- Suspends accounts with expired trials (no active paid subscription)
+- Sends `TrialExpiredNotification` email
+- Updates user status: `is_active = false`, sets `suspended_at` timestamp
+
+#### 2. Send Trial Expiry Warnings
+
+**Command:** `php artisan subscriptions:send-trial-warnings`
+
+- Finds trials expiring in exactly 3 days
+- Sends `TrialExpiringNotification` email with upgrade CTA
+- Only sends to active users
+
+### Email Notifications
+
+#### Trial Expiring (3 days before)
+
+- Subject: "Your Trial Expires Soon"
+- Includes: Trial end date, plan name, upgrade link
+- Sent to: Users with trials expiring in 3 days
+
+#### Trial Expired (on expiry)
+
+- Subject: "Your Trial Has Expired - Action Required"
+- Includes: Account suspension notice, upgrade link, support contact
+- Sent to: Users whose trials have expired and accounts are suspended
+
+### Login-Time Check
+
+When users log in, the system:
+
+1. Checks if their trial has expired
+2. Suspends the account if needed
+3. Sends expiry notification email
+4. Returns 403 error with suspension message
+
+### Production Setup
+
+Add this to your server's crontab to enable the scheduler:
+
+```bash
+* * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
+```
+
+---
+
+## 8. Subscription Plan Object Fields
+
 | Field              | Type    | Description                                      |
 | :----------------- | :------ | :----------------------------------------------- |
 | `id`               | int     | Unique ID                                        |

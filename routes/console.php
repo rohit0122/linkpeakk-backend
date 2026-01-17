@@ -18,4 +18,7 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Schedule subscription-related commands
 \Illuminate\Support\Facades\Schedule::command('subscriptions:send-renewal-notifications')->daily();
+\Illuminate\Support\Facades\Schedule::command('subscriptions:check-trial-expiry')->daily();
+\Illuminate\Support\Facades\Schedule::command('subscriptions:send-trial-warnings')->daily();
