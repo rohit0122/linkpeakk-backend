@@ -114,4 +114,26 @@ class AdminController extends Controller
         $status = $request->suspend ? 'suspended' : 'activated';
         return ApiResponse::success([], "User {$status} successfully");
     }
+
+    /**
+     * Sync all subscriptions with Razorpay.
+     */
+    public function syncSubscriptions(\App\Services\SubscriptionService $subscriptionService)
+    {
+        try {
+            $results = $subscriptionService->syncAllSubscriptions();
+            return ApiResponse::success($results, 'Subscriptions synchronized with Razorpay successfully');
+        } catch (\Exception $e) {
+            return ApiResponse::error('Failed to sync subscriptions: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * List all subscriptions for admin.
+     */
+    public function indexSubscriptions()
+    {
+        $subscriptions = Subscription::with(['user', 'plan'])->latest()->paginate(20);
+        return ApiResponse::success($subscriptions, 'Subscriptions retrieved successfully');
+    }
 }

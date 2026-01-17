@@ -303,4 +303,62 @@ class SubscriptionService
 
         return $subscription->load('plan');
     }
+
+    /**
+     * Synchronize all local subscriptions with Razorpay.
+     */
+    public function syncAllSubscriptions()
+    {
+        $subscriptions = Subscription::whereNotNull('razorpay_subscription_id')->get();
+        $results = [
+            'total' => $subscriptions->count(),
+            'synced' => 0,
+            'failed' => 0,
+            'errors' => []
+        ];
+
+        foreach ($subscriptions as $subscription) {
+            try {
+                $this->syncSubscriptionWithRazorpay($subscription);
+                $results['synced']++;
+            } catch (\Exception $e) {
+                $results['failed']++;
+                $results['errors'][] = "Sub ID {$subscription->razorpay_subscription_id}: " . $e->getMessage();
+                \Illuminate\Support\Facades\Log::error("Failed to sync subscription {$subscription->id}: " . $e->getMessage());
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Sync a single local subscription with Razorpay.
+     */
+    public function syncSubscriptionWithRazorpay(Subscription $subscription)
+    {
+        if (!$subscription->razorpay_subscription_id) {
+            return;
+        }
+
+        try {
+            $rzpSub = $this->razorpayService->fetchSubscription($subscription->razorpay_subscription_id);
+
+            $subscription->update([
+                'status' => $rzpSub->status,
+                'current_period_start' => ($rzpSub->current_start) ? \Carbon\Carbon::createFromTimestamp($rzpSub->current_start) : $subscription->current_period_start,
+                'current_period_end' => ($rzpSub->current_end) ? \Carbon\Carbon::createFromTimestamp($rzpSub->current_end) : $subscription->current_period_end,
+                'trial_ends_at' => (isset($rzpSub->trial_end) && $rzpSub->trial_end) ? \Carbon\Carbon::createFromTimestamp($rzpSub->trial_end) : $subscription->trial_ends_at,
+            ]);
+
+            // Handle cancelled status locally if needed
+            if ($rzpSub->status === 'cancelled' && !$subscription->cancelled_at) {
+                $subscription->update(['cancelled_at' => \Carbon\Carbon::now()]);
+            }
+
+            return $subscription;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Razorpay Sync Failed for subscription {$subscription->razorpay_subscription_id}: " . $e->getMessage());
+            throw $e;
+        }
+    }
 }

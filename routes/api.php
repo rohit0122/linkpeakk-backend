@@ -32,9 +32,9 @@ Route::prefix('v1')->middleware(['api.rate.limit:60,1'])->group(function () {
     Route::delete('/examples/{id}', [ExampleController::class, 'destroy']);
 
     // Example error responses
-    Route::get('/examples/demo/unauthorized', [ExampleController::class, 'unauthorized']);
-    Route::get('/examples/demo/forbidden', [ExampleController::class, 'forbidden']);
-    Route::get('/examples/demo/error', [ExampleController::class, 'error']);
+    Route::get('/examples/demo/unauthorized', [ExampleController::class, 'unauthorizedDemo']);
+    Route::get('/examples/demo/forbidden', [ExampleController::class, 'forbiddenDemo']);
+    Route::get('/examples/demo/error', [ExampleController::class, 'errorDemo']);
 });
 
 // Public Endpoints
@@ -115,6 +115,8 @@ Route::prefix('v1/admin')->middleware(['auth:sanctum', 'api.rate.limit:60,1'])->
     Route::get('/stats', [\App\Http\Controllers\Api\v1\AdminController::class, 'stats']);
     Route::get('/users', [\App\Http\Controllers\Api\v1\AdminController::class, 'users']);
     Route::post('/user/suspend', [\App\Http\Controllers\Api\v1\AdminController::class, 'suspend']);
+    Route::post('/subscriptions/sync', [\App\Http\Controllers\Api\v1\AdminController::class, 'syncSubscriptions']);
+    Route::get('/subscriptions', [\App\Http\Controllers\Api\v1\AdminController::class, 'indexSubscriptions']);
 
     // AI Helpers (Placeholders)
     Route::post('/ai/generate-title', function () {

@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use Razorpay\Api\Api;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use Razorpay\Api\Api;
 
 class RazorpayService
 {
@@ -24,7 +24,7 @@ class RazorpayService
                 'contact' => $contact,
             ]);
         } catch (Exception $e) {
-            Log::error('Razorpay Create Customer Failed: ' . $e->getMessage());
+            Log::error('Razorpay Create Customer Failed: '.$e->getMessage());
             throw $e;
         }
     }
@@ -34,11 +34,13 @@ class RazorpayService
         try {
             $customers = $this->api->customer->all(['email' => $email]);
             foreach ($customers as $customer) {
-                return $customer; 
+                return $customer;
             }
+
             return null;
         } catch (Exception $e) {
-            Log::error('Razorpay Get Customer By Email Failed: ' . $e->getMessage());
+            Log::error('Razorpay Get Customer By Email Failed: '.$e->getMessage());
+
             return null;
         }
     }
@@ -54,6 +56,7 @@ class RazorpayService
 
         // 2. If not found, create
         $newCustomer = $this->createCustomer($name, $email, $contact);
+
         return is_object($newCustomer) ? $newCustomer->id : ($newCustomer['id'] ?? null);
     }
 
@@ -70,32 +73,42 @@ class RazorpayService
             if ($startAt) {
                 $data['start_at'] = $startAt; // Timestamp for trial end or future start
             }
-            
+
             // Add ons can be handled here if needed
 
             return $this->api->subscription->create($data);
         } catch (Exception $e) {
-            Log::error('Razorpay Create Subscription Failed: ' . $e->getMessage());
+            Log::error('Razorpay Create Subscription Failed: '.$e->getMessage());
             throw $e;
         }
     }
-    
+
     public function cancelSubscription($subscriptionId, $cancelAtCycleEnd = false)
     {
         try {
             return $this->api->subscription->fetch($subscriptionId)->cancel(['cancel_at_cycle_end' => $cancelAtCycleEnd ? 1 : 0]);
         } catch (Exception $e) {
-             Log::error('Razorpay Cancel Subscription Failed: ' . $e->getMessage());
-             throw $e;
+            Log::error('Razorpay Cancel Subscription Failed: '.$e->getMessage());
+            throw $e;
         }
     }
 
     public function fetchSubscription($subscriptionId)
     {
         try {
-             return $this->api->subscription->fetch($subscriptionId);
+            return $this->api->subscription->fetch($subscriptionId);
         } catch (Exception $e) {
-            Log::error('Razorpay Fetch Subscription Failed: ' . $e->getMessage());
+            Log::error('Razorpay Fetch Subscription Failed: '.$e->getMessage());
+            throw $e;
+        }
+    }
+
+    public function listSubscriptions($options = [])
+    {
+        try {
+            return $this->api->subscription->all($options);
+        } catch (Exception $e) {
+            Log::error('Razorpay List Subscriptions Failed: '.$e->getMessage());
             throw $e;
         }
     }
@@ -104,9 +117,11 @@ class RazorpayService
     {
         try {
             $this->api->utility->verifyWebhookSignature($webhookBody, $webhookSignature, $webhookSecret);
+
             return true;
         } catch (Exception $e) {
-            Log::error('Razorpay Webhook Signature Verification Failed: ' . $e->getMessage());
+            Log::error('Razorpay Webhook Signature Verification Failed: '.$e->getMessage());
+
             return false;
         }
     }
@@ -115,9 +130,11 @@ class RazorpayService
     {
         try {
             $this->api->utility->verifyPaymentSignature($attributes);
+
             return true;
         } catch (Exception $e) {
-            Log::error('Razorpay Payment Signature Verification Failed: ' . $e->getMessage());
+            Log::error('Razorpay Payment Signature Verification Failed: '.$e->getMessage());
+
             return false;
         }
     }
