@@ -135,4 +135,42 @@ class SubscriptionController extends Controller
             ], 400);
         }
     }
+    public function retryInit(Request $request)
+    {
+        $user = $request->user();
+
+        // Find if there is a pending subscription that needs initialization
+        $pendingSubscription = $user->subscriptions()
+            ->where('status', 'pending')
+            ->whereNull('razorpay_subscription_id')
+            ->latest()
+            ->first();
+
+        if (! $pendingSubscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No pending subscription found requiring initialization.',
+                'data' => []
+            ], 404);
+        }
+
+        try {
+            $this->subscriptionService->initializeRazorpaySubscription($pendingSubscription);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Subscription initialized successfully.',
+                'data' => [
+                    'subscription' => $this->dashboardService->formatSubscription($user, $pendingSubscription),
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Retry Init Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to initialize subscription: ' . $e->getMessage(),
+                'data' => []
+            ], 400);
+        }
+    }
 }

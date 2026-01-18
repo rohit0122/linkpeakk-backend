@@ -106,6 +106,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'api.rate.limit:60,1'])->group(
     Route::get('/subscriptions/status', [\App\Http\Controllers\Api\v1\SubscriptionController::class, 'status']);
     Route::post('/subscriptions/select-plan', [\App\Http\Controllers\Api\v1\SubscriptionController::class, 'selectPlan']);
     Route::post('/subscriptions/verify', [\App\Http\Controllers\Api\v1\SubscriptionController::class, 'verifyPayment']);
+    Route::post('/subscriptions/retry-init', [\App\Http\Controllers\Api\v1\SubscriptionController::class, 'retryInit']);
     Route::post('/subscriptions/cancel', [\App\Http\Controllers\Api\v1\SubscriptionController::class, 'cancel']);
 });
 
