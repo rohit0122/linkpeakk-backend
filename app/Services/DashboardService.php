@@ -45,7 +45,7 @@ class DashboardService
                 $query->select('id', 'user_id', 'bio_page_id', 'title', 'url', 'icon', 'is_active', 'order', 'clicks', 'unique_clicks', 'created_at', 'updated_at')
                     ->orderBy('order');
             }])
-            ->select('id', 'user_id', 'slug', 'title', 'bio', 'theme', 'template', 'profile_image', 'profile_image_blob', 'social_links', 'branding', 'views', 'unique_views', 'is_active')
+            ->select('id', 'user_id', 'slug', 'title', 'bio', 'theme', 'template', 'profile_image', 'social_links', 'branding', 'views', 'unique_views', 'is_active')
             ->orderBy('created_at', 'desc')
             ->get();
 

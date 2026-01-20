@@ -132,13 +132,9 @@ class BioPageController extends Controller
         }
 
         if ($request->hasFile('profile_image_file')) {
-            // $this->deleteImage($page->profile_image); // No longer dealing with files
-            $blob = $this->optimizeImageToBinary($request->file('profile_image_file'), 800, 800);
-            $data['profile_image_blob'] = $blob;
-            // Set profile_image path to the API endpoint
-            $currentSlug = $data['slug'] ?? $page->slug;
-             // Ensure we use the correct slug if it's being updated
-            $data['profile_image'] = 'api/v1/public/pages/' . $currentSlug . '/image';
+            $this->deleteImage($page->profile_image);
+            $path = $this->uploadImage($request->file('profile_image_file'), 'pages', 800, 800);
+            $data['profile_image'] = $path;
         }
 
         $page->update($data);
@@ -157,19 +153,4 @@ class BioPageController extends Controller
         return ApiResponse::success([], 'Bio page deleted successfully');
     }
 
-    /**
-     * Serve profile image from BLOB.
-     */
-    public function image($slug)
-    {
-        $page = \App\Models\BioPage::where('slug', $slug)->firstOrFail();
-
-        if (!$page->profile_image_blob) {
-            return response('', 404);
-        }
-
-        return response($page->profile_image_blob)
-            ->header('Content-Type', 'image/webp')
-            ->header('Cache-Control', 'public, max-age=86400');
-    }
 }

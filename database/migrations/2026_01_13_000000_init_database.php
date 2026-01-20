@@ -22,7 +22,6 @@ return new class extends Migration
             $table->text('bio')->nullable();
             $table->string('avatar_url')->nullable();
             // Added columns from separate migrations
-            $table->longText('avatar_url_blob')->nullable();
             $table->string('verification_token')->nullable();
             $table->string('role')->default('user');
             $table->boolean('is_active')->default(true);
@@ -155,7 +154,6 @@ return new class extends Migration
             $table->string('theme')->default('classic');
             $table->string('profile_image')->nullable();
             // Added column
-            $table->longText('profile_image_blob')->nullable();
             $table->unsignedBigInteger('views')->default(0);
             $table->unsignedBigInteger('unique_views')->default(0);
             $table->unsignedBigInteger('likes')->default(0);
@@ -170,8 +168,6 @@ return new class extends Migration
             $table->index('is_active');
         });
 
-        // Ensure profile_image_blob is LONGBLOB for raw binary storage
-        DB::statement('ALTER TABLE bio_pages MODIFY profile_image_blob LONGBLOB');
 
         // 4. Links Table
         Schema::create('links', function (Blueprint $table) {

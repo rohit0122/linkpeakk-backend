@@ -30,10 +30,9 @@ class SettingsController extends Controller
         $data = $request->except(['avatar_file']); // Exclude file field
 
         if ($request->hasFile('avatar_file')) {
-            // $this->deleteImage($user->avatar_url); // No longer dealing with files
-            $blob = $this->optimizeImageToBinary($request->file('avatar_file'), 500, 500);
-            $data['avatar_url_blob'] = $blob;
-            $data['avatar_url'] = 'api/v1/public/user/' . $user->id . '/avatar';
+            $this->deleteImage($user->avatar_url);
+            $path = $this->uploadImage($request->file('avatar_file'), 'avatars', 500, 500);
+            $data['avatar_url'] = $path;
         }
 
         $user->update($data);
@@ -74,20 +73,6 @@ class SettingsController extends Controller
         ]);
     }
 
-    /**
-     * Serve user avatar from BLOB.
-     */
-    public function avatar($id)
-    {
-        $user = \App\Models\User::findOrFail($id);
-
-        if (!$user->avatar_url_blob) {
-            return response('', 404);
-        }
-
-        return response($user->avatar_url_blob)
-            ->header('Cache-Control', 'public, max-age=86400');
-    }
     /**
      * Delete user account and all associated data.
      */

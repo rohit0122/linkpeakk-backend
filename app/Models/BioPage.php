@@ -25,7 +25,6 @@ class BioPage extends Model
         'template',
         'theme',
         'profile_image',
-        'profile_image_blob',
         'seo',
         'social_links',
         'views',
@@ -43,7 +42,6 @@ class BioPage extends Model
      * @var array<int, string>
      */
     protected $hidden = [
-        'profile_image_blob',
         'views',
     ];
 
@@ -76,9 +74,7 @@ class BioPage extends Model
     protected function profileImage(): Attribute
     {
         return Attribute::make(
-            get: fn ($value) => $this->profile_image_blob 
-                ? 'data:image/webp;base64,' . base64_encode($this->profile_image_blob) 
-                : null,
+            get: fn ($value) => $value ? \Illuminate\Support\Facades\Storage::disk('public')->url($value) : null,
         );
     }
 

@@ -25,7 +25,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'bio',
         'avatar_url',
-        'avatar_url_blob',
         'verification_token',
         'role',
         'is_active',
@@ -42,7 +41,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'remember_token',
         'verification_token',
-        'avatar_url_blob',
     ];
 
     /**
@@ -137,9 +135,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected function avatarUrl(): Attribute
     {
         return Attribute::make(
-            get: fn ($value) => $this->avatar_url_blob
-                ? 'data:image/webp;base64,'.base64_encode($this->avatar_url_blob)
-                : null,
+            get: fn ($value) => $value ? \Illuminate\Support\Facades\Storage::disk('public')->url($value) : null,
         );
     }
 }

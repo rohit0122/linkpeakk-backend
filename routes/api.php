@@ -40,8 +40,6 @@ Route::prefix('v1')->middleware(['api.rate.limit:60,1'])->group(function () {
 // Public Endpoints
 Route::prefix('v1/public')->group(function () {
     Route::get('/pages/{slug}', [\App\Http\Controllers\Api\v1\PublicPageController::class, 'show']);
-    Route::get('/pages/{slug}/image', [\App\Http\Controllers\Api\v1\BioPageController::class, 'image']);
-    Route::get('/user/{id}/avatar', [\App\Http\Controllers\Api\v1\SettingsController::class, 'avatar']);
     Route::post('/leads', [\App\Http\Controllers\Api\v1\LeadController::class, 'store']);
     Route::get('/pages/{id}/qrcode', [\App\Http\Controllers\Api\v1\QRCodeController::class, 'show']);
     Route::get('/pages/{id}/qrcode/svg', [\App\Http\Controllers\Api\v1\QRCodeController::class, 'svg']);
