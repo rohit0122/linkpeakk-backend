@@ -83,6 +83,28 @@ class PublicPageController extends Controller
     }
 
     /**
+     * Fetch lightweight stats for a bio page.
+     * Designed for high-frequency polling.
+     */
+    public function stats($slug)
+    {
+        // Cache for 5 seconds to handle high concurrency (e.g. 200k users)
+        // With 5s TTL, DB is hit max once per 5s per page, regardless of traffic.
+        $stats = \Illuminate\Support\Facades\Cache::remember("page_stats_{$slug}", 5, function () use ($slug) {
+            return DB::table('bio_pages')
+                ->where('slug', $slug)
+                ->select('views as total_views', 'unique_views', 'likes')
+                ->first();
+        });
+
+        if (! $stats) {
+            return ApiResponse::error('Bio page not found', 404);
+        }
+
+        return response()->json($stats);
+    }
+
+    /**
      * Track a view for a bio page.
      */
     public function trackView(Request $request)
