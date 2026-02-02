@@ -38,7 +38,7 @@ class PublicPageController extends Controller
             // and its fields are adjusted as per the instruction's code edit.
             // The top-level $links variable is no longer needed.
 
-            $userPlanName = $page->user->activeSubscription->plan->name ?? 'FREE';
+            $userPlanName = $page->user->activeSubscription?->plan?->name ?? 'FREE';
 
             return [
                 'page' => [

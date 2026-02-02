@@ -45,7 +45,7 @@ class DashboardService
                 $query->select('id', 'user_id', 'bio_page_id', 'title', 'url', 'icon', 'is_active', 'order', 'clicks', 'unique_clicks', 'created_at', 'updated_at')
                     ->orderBy('order');
             }])
-            ->select('id', 'user_id', 'slug', 'title', 'bio', 'theme', 'template', 'profile_image', 'social_links', 'branding', 'views', 'unique_views', 'is_active')
+            ->select('id', 'user_id', 'slug', 'title', 'bio', 'theme', 'template', 'profile_image', 'social_links', 'seo', 'branding', 'views', 'unique_views', 'is_active')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -99,6 +99,7 @@ class DashboardService
             'unique_views' => $page->unique_views,
             'total_active_links' => $page->links->where('is_active', true)->count(),
             'is_active' => (bool) $page->is_active,
+            'seo' => $page->seo,
             'links' => $page->links()
                 ->select('id', 'user_id', 'bio_page_id', 'title', 'url', 'icon', 'is_active', 'order', 'clicks', 'unique_clicks', 'created_at', 'updated_at')
                 ->orderBy('order')
