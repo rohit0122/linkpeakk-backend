@@ -9,12 +9,12 @@ use Illuminate\Support\Facades\Log;
 class WebhookService
 {
     protected $razorpayService;
-    protected $subscriptionService;
+    protected $paymentService;
 
-    public function __construct(RazorpayService $razorpayService, SubscriptionService $subscriptionService)
+    public function __construct(RazorpayService $razorpayService, PaymentService $paymentService)
     {
         $this->razorpayService = $razorpayService;
-        $this->subscriptionService = $subscriptionService;
+        $this->paymentService = $paymentService;
     }
 
     public function handle(Request $request)
@@ -30,7 +30,7 @@ class WebhookService
         }
 
         $data = json_decode($payload, true);
-        $eventId = $data['event_id'] ?? null;
+        $eventId = $data['id'] ?? null; // Razorpay sends 'id' for webhook event id
         $eventFn = $data['event'] ?? null;
 
         if (!$eventId) {
@@ -71,29 +71,31 @@ class WebhookService
     protected function processEvent($event, $data)
     {
         switch ($event) {
-            case 'subscription.authenticated':
-            case 'subscription.activated':
-                Log::info("Subscription Active/Authenticated: " . $data['payload']['subscription']['entity']['id']);
-                $this->subscriptionService->activateSubscription($data['payload']['subscription']['entity']['id']);
+            case 'order.paid':
+            case 'payment.captured':
+            case 'payment_link.paid':
+                // For payment_link.paid, the order_id is in the standard payment entity as well
+                $razorpayOrderId = $data['payload']['payment']['entity']['order_id'] ?? 
+                                   $data['payload']['payment_link']['entity']['order_id'] ?? null;
+                $razorpayPaymentId = $data['payload']['payment']['entity']['id'] ?? null;
+
+                if ($razorpayOrderId && $razorpayPaymentId) {
+                    Log::info("Processing payment success for Order/Link: {$razorpayOrderId}");
+                    $this->paymentService->handlePaymentSuccess($razorpayOrderId, $razorpayPaymentId);
+                }
+                break;
+                
+            case 'payment_link.expired':
+            case 'payment_link.cancelled':
+                $razorpayOrderId = $data['payload']['payment_link']['entity']['order_id'] ?? null;
+                $status = ($event === 'payment_link.expired') ? 'expired' : 'cancelled';
+
+                if ($razorpayOrderId) {
+                     Log::info("Processing payment {$status} for Link: {$razorpayOrderId}");
+                     $this->paymentService->updatePaymentStatus($razorpayOrderId, $status);
+                }
                 break;
 
-            case 'subscription.charged':
-                Log::info("Subscription Charged: " . $data['payload']['subscription']['entity']['id']);
-                // Always sync on charge to ensure period dates are updated
-                $this->subscriptionService->activateSubscription($data['payload']['subscription']['entity']['id']);
-                break;
-                
-            case 'subscription.cancelled':
-            case 'subscription.halted':
-            case 'subscription.expired':
-                Log::info("Subscription Terminanted/Halted: " . $event . " - " . $data['payload']['subscription']['entity']['id']);
-                $razorpaySubscriptionId = $data['payload']['subscription']['entity']['id'];
-                $this->subscriptionService->activateSubscription($razorpaySubscriptionId); // Sync the status first
-                
-                // If it's truly inactive, we might need to deactivate the user or downgrade
-                // This depends on whether you want immediate suspension or just status update
-                break;
-                
             default:
                 Log::info("Unhandled Razorpay Event: " . $event);
         }

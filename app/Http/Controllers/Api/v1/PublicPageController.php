@@ -22,7 +22,7 @@ class PublicPageController extends Controller
         $data = cache()->remember($cacheKey, now()->addMinutes(5), function () use ($slug) {
             $page = BioPage::where('slug', $slug)
                 ->where('is_active', true)
-                ->with(['user.activeSubscription.plan'])
+                ->with(['user.plan'])
                 ->first();
 
             if (! $page) {
@@ -38,7 +38,7 @@ class PublicPageController extends Controller
             // and its fields are adjusted as per the instruction's code edit.
             // The top-level $links variable is no longer needed.
 
-            $userPlanName = $page->user->activeSubscription?->plan?->name ?? 'FREE';
+            $userPlanName = $page->user->plan?->name ?? 'FREE';
 
             return [
                 'page' => [

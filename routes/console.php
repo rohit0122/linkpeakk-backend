@@ -19,6 +19,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Schedule subscription-related commands
-\Illuminate\Support\Facades\Schedule::command('subscriptions:send-renewal-notifications')->daily();
-\Illuminate\Support\Facades\Schedule::command('subscriptions:check-trial-expiry')->daily();
-\Illuminate\Support\Facades\Schedule::command('subscriptions:send-trial-warnings')->daily();
+// Schedule plan expiry and notification commands
+\Illuminate\Support\Facades\Schedule::command('linkpeak:handle-expiry')->everyMinute();
+\Illuminate\Support\Facades\Schedule::command('linkpeak:send-expiry-warnings')->daily();

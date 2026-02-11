@@ -60,55 +60,44 @@ class RazorpayService
         return is_object($newCustomer) ? $newCustomer->id : ($newCustomer['id'] ?? null);
     }
 
-    public function createSubscription($planId, $customerId, $totalCount = 120, $startAt = null)
+    public function createOrder($amount, $currency = 'INR', $metadata = [])
     {
         try {
-            $data = [
-                'plan_id' => $planId,
-                'total_count' => $totalCount,
-                'quantity' => 1,
-                'customer_id' => $customerId,
+            return $this->api->order->create([
+                'amount' => $amount * 100, // Amount in paise
+                'currency' => $currency,
+                'receipt' => 'receipt_'.time(),
+                'notes' => $metadata,
+            ]);
+        } catch (Exception $e) {
+            Log::error('Razorpay Create Order Failed: '.$e->getMessage());
+            throw $e;
+        }
+    }
+
+    public function createPaymentLink($amount, $currency, $description, $metadata = [], $customer = null)
+    {
+        try {
+            $payload = [
+                'amount' => $amount * 100,
+                'currency' => $currency,
+                'description' => $description,
+                'notes' => $metadata,
+                'callback_url' => config('app.public_url') . '/dashboard?payment=success',
+                'callback_method' => 'get',
             ];
 
-            if ($startAt) {
-                $data['start_at'] = $startAt; // Timestamp for trial end or future start
+            if ($customer) {
+                $payload['customer'] = [
+                    'name' => $customer->name ?? '',
+                    'email' => $customer->email ?? '',
+                    'contact' => $customer->contact ?? '',
+                ];
             }
 
-            // Add ons can be handled here if needed
-
-            return $this->api->subscription->create($data);
+            return $this->api->paymentLink->create($payload);
         } catch (Exception $e) {
-            Log::error('Razorpay Create Subscription Failed: '.$e->getMessage());
-            throw $e;
-        }
-    }
-
-    public function cancelSubscription($subscriptionId, $cancelAtCycleEnd = false)
-    {
-        try {
-            return $this->api->subscription->fetch($subscriptionId)->cancel(['cancel_at_cycle_end' => $cancelAtCycleEnd ? 1 : 0]);
-        } catch (Exception $e) {
-            Log::error('Razorpay Cancel Subscription Failed: '.$e->getMessage());
-            throw $e;
-        }
-    }
-
-    public function fetchSubscription($subscriptionId)
-    {
-        try {
-            return $this->api->subscription->fetch($subscriptionId);
-        } catch (Exception $e) {
-            Log::error('Razorpay Fetch Subscription Failed: '.$e->getMessage());
-            throw $e;
-        }
-    }
-
-    public function listSubscriptions($options = [])
-    {
-        try {
-            return $this->api->subscription->all($options);
-        } catch (Exception $e) {
-            Log::error('Razorpay List Subscriptions Failed: '.$e->getMessage());
+            Log::error('Razorpay Create Payment Link Failed: '.$e->getMessage());
             throw $e;
         }
     }

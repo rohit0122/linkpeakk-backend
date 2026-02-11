@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\v1;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\BioPage;
-use App\Models\Subscription;
+use App\Models\Payment;
 use App\Models\Link;
 use App\Helpers\ApiResponse;
 use Illuminate\Http\Request;
@@ -23,24 +23,21 @@ class AdminController extends Controller
         $totalUsers = User::count();
         $newUsers30d = User::where('created_at', '>=', now()->subDays(30))->count();
         
-        // Paid users are those with an active or trialing subscription on a plan with price > 0
-        $paidUsers = User::whereHas('subscriptions', function ($query) {
-            $query->whereIn('status', ['active', 'trialing', 'authenticated', 'pending'])
-                  ->whereHas('plan', function ($q) {
-                      $q->where('price', '>', 0);
-                  });
-        })->count();
+        // Paid users are those with a plan_expires_at in the future and price > 0
+        $paidUsers = User::whereNotNull('plan_expires_at')
+            ->where('plan_expires_at', '>=', now())
+            ->whereHas('plan', function ($q) {
+                $q->where('price', '>', 0);
+            })->count();
 
         $conversionRate = $totalUsers > 0 ? round(($paidUsers / $totalUsers) * 100, 2) : 0;
 
-        // 2. Revenue (MRR)
-        // Adjust price based on interval if necessary (currently assumes all are monthly based on seeder)
-        $mrr = Subscription::whereIn('status', ['active', 'trialing', 'authenticated', 'pending'])
-            ->join('plans', 'subscriptions.plan_id', '=', 'plans.id')
-            ->select(DB::raw('SUM(CASE WHEN plans.billing_interval = "year" THEN plans.price / 12 ELSE plans.price END) as total'))
-            ->value('total') ?? 0;
+        // 2. Revenue (Last 30 Days)
+        $revenue30d = Payment::where('status', 'captured')
+            ->where('created_at', '>=', now()->subDays(30))
+            ->sum('amount');
 
-        $annualRevenue = $mrr * 12;
+        $annualRevenue = $revenue30d * 12; // Estimated
 
         // 3. System-wide Stats
         $totalViews = BioPage::sum('views');
@@ -48,9 +45,10 @@ class AdminController extends Controller
 
         // 4. Chart Data: Plan Distribution
         $planDistribution = DB::table('plans')
-            ->leftJoin('subscriptions', 'plans.id', '=', 'subscriptions.plan_id')
-            ->whereIn('subscriptions.status', ['active', 'trialing', 'authenticated', 'pending'])
-            ->select('plans.name as label', DB::raw('count(subscriptions.id) as value'))
+            ->leftJoin('users', 'plans.id', '=', 'users.plan_id')
+            ->whereNotNull('users.plan_expires_at')
+            ->where('users.plan_expires_at', '>=', now())
+            ->select('plans.name as label', DB::raw('count(users.id) as value'))
             ->groupBy('plans.name')
             ->get();
 
@@ -81,8 +79,8 @@ class AdminController extends Controller
                 'paid_users' => $paidUsers,
                 'new_users_30d' => $newUsers30d,
                 'conversion_rate' => $conversionRate,
-                'mrr' => round($mrr, 2),
-                'annual_revenue' => round($annualRevenue, 2),
+                'revenue_30d' => round($revenue30d, 2),
+                'annual_revenue_est' => round($annualRevenue, 2),
                 'total_views' => $totalViews,
                 'total_links' => $totalLinks,
             ],
@@ -99,7 +97,7 @@ class AdminController extends Controller
      */
     public function users()
     {
-        $users = User::with(['activeSubscription.plan'])->latest()->paginate(20);
+        $users = User::with(['plan'])->latest()->paginate(20);
         return ApiResponse::success($users, 'Users retrieved successfully');
     }
 
@@ -125,24 +123,11 @@ class AdminController extends Controller
     }
 
     /**
-     * Sync all subscriptions with Razorpay.
+     * List all payments for admin.
      */
-    public function syncSubscriptions(\App\Services\SubscriptionService $subscriptionService)
+    public function indexPayments()
     {
-        try {
-            $results = $subscriptionService->syncAllSubscriptions();
-            return ApiResponse::success($results, 'Subscriptions synchronized with Razorpay successfully');
-        } catch (\Exception $e) {
-            return ApiResponse::error('Failed to sync subscriptions: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * List all subscriptions for admin.
-     */
-    public function indexSubscriptions()
-    {
-        $subscriptions = Subscription::with(['user', 'plan'])->latest()->paginate(20);
-        return ApiResponse::success($subscriptions, 'Subscriptions retrieved successfully');
+        $payments = Payment::with(['user', 'plan'])->latest()->paginate(20);
+        return ApiResponse::success($payments, 'Payments retrieved successfully');
     }
 }

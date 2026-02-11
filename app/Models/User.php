@@ -27,6 +27,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'avatar_url',
         'verification_token',
         'role',
+        'plan_id',
+        'plan_expires_at',
+        'pending_plan_id',
         'is_active',
         'suspended_at',
         'suspension_reason',
@@ -54,21 +57,12 @@ class User extends Authenticatable implements MustVerifyEmail
         'is_active' => 'boolean',
         'suspended_at' => 'datetime',
         'suspension_reason' => 'string',
+        'plan_expires_at' => 'datetime',
     ];
-
-    public function subscriptions()
-    {
-        return $this->hasMany(Subscription::class);
-    }
 
     public function bioPages()
     {
         return $this->hasMany(BioPage::class);
-    }
-
-    public function activeSubscription()
-    {
-        return $this->hasOne(Subscription::class)->whereIn('status', ['active', 'trialing', 'pending', 'authenticated', 'created'])->latestOfMany();
     }
 
     public function links()
@@ -81,6 +75,21 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Ticket::class);
     }
 
+    public function plan()
+    {
+        return $this->belongsTo(Plan::class, 'plan_id');
+    }
+
+    public function pendingPlan()
+    {
+        return $this->belongsTo(Plan::class, 'pending_plan_id');
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
     /**
      * Check if user can access a feature or is within limits.
      *
@@ -89,12 +98,14 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function canAccessFeature(string $feature, $value = null): bool
     {
-        $subscription = $this->activeSubscription()->with('plan')->first();
-
-        if (! $subscription || ! $subscription->plan) {
-            $plan = \App\Models\Plan::where('slug', 'free')->first();
+        // If plan is not expired, use the assigned plan
+        // Otherwise, default to free plan
+        $isExpired = $this->plan_expires_at && $this->plan_expires_at->isPast();
+        
+        if (!$isExpired && $this->plan_id) {
+            $plan = $this->plan;
         } else {
-            $plan = $subscription->plan;
+            $plan = \App\Models\Plan::where('slug', 'free')->first();
         }
 
         if (! $plan) {
@@ -127,6 +138,18 @@ class User extends Authenticatable implements MustVerifyEmail
 
         // Handle boolean features
         return (bool) $limit;
+    }
+
+    /**
+     * Check if user is in the 7-day window before expiry.
+     */
+    public function isInRenewalWindow(): bool
+    {
+        if (!$this->plan_expires_at) {
+            return true; // If no expiry (free/legacy), they can pay anytime
+        }
+
+        return $this->plan_expires_at->diffInDays(now()) <= 7 || $this->plan_expires_at->isPast();
     }
 
     /**

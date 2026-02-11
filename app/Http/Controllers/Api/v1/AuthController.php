@@ -4,10 +4,8 @@ namespace App\Http\Controllers\Api\v1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
-use App\Models\Subscription;
 use App\Models\User;
 use App\Notifications\WelcomeNotification;
-use App\Services\SubscriptionService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -18,7 +16,7 @@ class AuthController extends Controller
     /**
      * Register a new user.
      */
-    public function register(Request $request, SubscriptionService $subscriptionService)
+    public function register(Request $request)
     {
         try {
             $request->validate([
@@ -46,28 +44,10 @@ class AuthController extends Controller
             }
 
             if ($plan) {
-                if ($plan->slug === 'free') {
-                    // Create explicit free subscription
-                    Subscription::create([
-                        'user_id' => $user->id,
-                        'plan_id' => $plan->id,
-                        'status' => 'active',
-                        'current_period_start' => Carbon::now(),
-                        // Free plan has no end date usually
-                    ]);
-                } else {
-                    // For Paid plans, create a pending local subscription
-                    // Razorpay id will be created after email verification
-                    $trialEndsAt = Carbon::now()->addDays($plan->trial_days ?: 7);
-                    Subscription::create([
-                        'user_id' => $user->id,
-                        'plan_id' => $plan->id,
-                        'status' => 'pending', // Special status for unverified emails
-                        'current_period_start' => Carbon::now(),
-                        'current_period_end' => $trialEndsAt,
-                        'trial_ends_at' => $trialEndsAt,
-                    ]);
-                }
+                $user->update([
+                    'plan_id' => $plan->id,
+                    'plan_expires_at' => ($plan->slug === 'free') ? null : Carbon::now()->addDays($plan->trial_days ?: 7),
+                ]);
             }
 
             // Send verification email
@@ -125,30 +105,8 @@ class AuthController extends Controller
         // Send Welcome Email
         $user->notify(new WelcomeNotification);
 
-        // Check for pending paid subscription to initialize Razorpay
-        $pendingSubscription = Subscription::where('user_id', $user->id)
-            ->where('status', 'pending')
-            ->first();
-
-        if ($pendingSubscription) {
-            try {
-                // Initialize Razorpay Subscription (Customer + Subscription)
-                \Illuminate\Support\Facades\Log::info('Attempting to initialize Razorpay subscription for verified user: '.$user->id);
-                $subscriptionService = app(\App\Services\SubscriptionService::class);
-                $subscriptionService->initializeRazorpaySubscription($pendingSubscription);
-                \Illuminate\Support\Facades\Log::info('Razorpay subscription successfully initialized for user: '.$user->id);
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('Razorpay initialization FAILED after verification for user '.$user->id.': '.$e->getMessage(), [
-                    'exception' => $e,
-                    'user_id' => $user->id,
-                    'plan' => $pendingSubscription->plan->slug ?? 'unknown',
-                    'razorpay_plan_id' => $pendingSubscription->plan->razorpay_plan_id ?? 'missing',
-                ]);
-
-                // We don't want to break the verification flow if Razorpay fails (e.g. invalid plan IDs)
-                // but the user should be aware their premium features might be pending setup.
-            }
-        }
+        // No additional initialization needed for one-time payment model here.
+        // Payment will be handled via Razorpay Checkout when user chooses to pay.
 
         return response()->json([
             'success' => true,
@@ -219,9 +177,9 @@ class AuthController extends Controller
                 ], 403);
             }
 
-            // Check and handle trial expiry suspension
-            $subscriptionService = app(SubscriptionService::class);
-            $subscriptionService->checkAndHandleTrialExpiry($user);
+            // Check and handle plan expiry
+            $paymentService = app(\App\Services\PaymentService::class);
+            $paymentService->handleExpiries(); // Global check (could be optimized to just this user)
 
             // Double check if user is now suspended
             if (! $user->is_active || $user->suspended_at) {

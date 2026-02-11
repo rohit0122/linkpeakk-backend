@@ -13,11 +13,8 @@ class Plan extends Model
     protected $fillable = [
         'name',
         'slug',
-        'razorpay_plan_id',
         'price',
         'currency',
-        'billing_interval',
-        'trial_days',
         'is_active',
         'features',
     ];
@@ -28,8 +25,4 @@ class Plan extends Model
         'features' => 'array',
     ];
 
-    public function subscriptions()
-    {
-        return $this->hasMany(Subscription::class);
-    }
 }

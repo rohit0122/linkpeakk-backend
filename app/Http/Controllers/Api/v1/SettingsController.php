@@ -100,11 +100,8 @@ class SettingsController extends Controller
                 $bioPage->delete();
             }
 
-            // Delete Subscriptions and Plan Changes
-            foreach ($user->subscriptions as $subscription) {
-                \App\Models\PlanChange::where('subscription_id', $subscription->id)->delete();
-                $subscription->delete();
-            }
+            // Delete Payment Records
+            $user->payments()->delete();
 
             // Capture info for email
             $name = $user->name;

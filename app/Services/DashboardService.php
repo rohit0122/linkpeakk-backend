@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\BioPage;
 use App\Models\Plan;
-use App\Models\Subscription;
 use App\Models\User;
 
 class DashboardService
@@ -29,15 +28,8 @@ class DashboardService
             return $data;
         }
 
-        // Subscription Info
-        $subscription = $user->activeSubscription()
-            ->with(['plan' => function ($query) {
-                $query->select('id', 'name', 'slug', 'price');
-            }])
-            ->select('subscriptions.id', 'subscriptions.user_id', 'subscriptions.plan_id', 'subscriptions.status', 'subscriptions.razorpay_subscription_id', 'subscriptions.current_period_end', 'subscriptions.trial_ends_at')
-            ->first();
-
-        $data['subscription'] = $this->formatSubscription($user, $subscription);
+        // Plan Info
+        $data['subscription'] = $this->formatSubscription($user);
 
         // Bio Pages Info
         $bioPages = $user->bioPages()
@@ -110,42 +102,50 @@ class DashboardService
     /**
      * Format a Subscription for the response.
      */
-    public function formatSubscription(User $user, ?Subscription $subscription)
+    public function formatSubscription(User $user)
     {
-        if (! $subscription) {
-            $freePlan = Plan::where('slug', 'free')->select('id', 'name', 'slug')->first();
-
+        $plan = $user->plan;
+        
+        if (!$plan || $plan->slug === 'free') {
             return [
                 'status' => 'free',
-                'plan_name' => $freePlan ? $freePlan->name : 'FREE',
-                'expiry_date' => 'Never',
-                'is_trial' => false,
-                'is_paid' => false,
+                'plan_name' => $plan ? $plan->name : 'FREE',
+                'expiry_date' => null,
                 'formatted_status' => 'Free Plan',
             ];
         }
 
-        $statusLabel = ucfirst($subscription->status);
-        if ($subscription->status === 'trialing') {
-            $statusLabel .= ' (Trial)';
-        } elseif ($subscription->status === 'pending') {
-            $statusLabel = 'Pending Payment';
-        } elseif ($subscription->status === 'authenticated') {
+        $isExpired = $user->plan_expires_at && $user->plan_expires_at->isPast();
+        
+        // Check payment history to determine if this is a trial or active paid sub
+        $hasPaid = $user->payments()->where('status', 'captured')->exists();
+        $isTrial = !$hasPaid && $plan->price > 0;
+
+        if ($isExpired) {
+            $status = 'expired';
+            $statusLabel = 'Expired';
+        } elseif ($isTrial) {
+            $status = 'trial';
+            $statusLabel = 'Trialing';
+        } else {
+            $status = 'active';
             $statusLabel = 'Active';
         }
 
         return [
-            'status' => $subscription->status,
-            'plan_name' => $subscription->plan->name,
-            'razorpay_subscription_id' => $subscription->razorpay_subscription_id,
-            'expiry_date' => $subscription->current_period_end ? $subscription->current_period_end->format('Y-m-d\TH:i:s\Z') : 'Never',
-            'is_trial' => $subscription->trial_ends_at && $subscription->trial_ends_at->isFuture(),
-            'is_paid' => $subscription->plan->price > 0 && in_array($subscription->status, ['active', 'trialing', 'authenticated']),
+            'status' => $status,
+            'plan_name' => $plan->name,
+            'expiry_date' => $user->plan_expires_at ? $user->plan_expires_at->format('Y-m-d\TH:i:s\Z') : null,
+            'is_trial' => $isTrial,
             'formatted_status' => $statusLabel,
             'prefill' => [
                 'name' => $user->name,
                 'email' => $user->email,
             ],
+            'pending_plan' => $user->pendingPlan ? [
+                'name' => $user->pendingPlan->name,
+                'slug' => $user->pendingPlan->slug,
+            ] : null,
         ];
     }
 }
