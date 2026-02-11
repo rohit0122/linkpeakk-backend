@@ -25,24 +25,24 @@ class PaymentService
     public function createPaymentLink(User $user, Plan $plan)
     {
         // Business Rule: User can upgrade or downgrade only in the last 7 days before expiry.
-        if (!$user->isInRenewalWindow()) {
-            if ($user->plan_id != $plan->id) {
-                throw new Exception("You can only change your plan in the last 7 days before your current plan expires.");
-            }
-        }
+        // if (! $user->isUSDenewalWindow()) {
+        //    if ($user->plan_id != $plan->id) {
+        //        throw new Exception('You can only change your plan in the last 7 days before your current plan expires.');
+        //    }
+        // }
 
         try {
             $description = "Payment for {$plan->name} plan - 30 Days Access";
             $metadata = [
                 'user_id' => $user->id,
                 'plan_id' => $plan->id,
-                'plan_slug' => $plan->slug
+                'plan_slug' => $plan->slug,
             ];
 
             $paymentLink = $this->razorpayService->createPaymentLink(
-                $plan->price, 
-                $plan->currency ?? 'INR', 
-                $description, 
+                $plan->price,
+                $plan->currency ?? 'USD',
+                $description,
                 $metadata,
                 $user
             );
@@ -51,15 +51,15 @@ class PaymentService
             Payment::create([
                 'user_id' => $user->id,
                 'plan_id' => $plan->id,
-                'razorpay_order_id' => $paymentLink->order_id, // Links have parent order_id
+                'razorpay_payment_link_id' => $paymentLink->id, // Links have parent id
                 'amount' => $plan->price,
-                'currency' => $plan->currency ?? 'INR',
+                'currency' => $plan->currency ?? 'USD',
                 'status' => 'created',
             ]);
 
             return $paymentLink->short_url;
         } catch (Exception $e) {
-            Log::error('Failed to create payment link: ' . $e->getMessage());
+            Log::error('Failed to create payment link: '.$e->getMessage());
             throw $e;
         }
     }
@@ -67,13 +67,14 @@ class PaymentService
     /**
      * Handle successful payment from webhook or client verify.
      */
-    public function handlePaymentSuccess($razorpayOrderId, $razorpayPaymentId)
+    public function handlePaymentSuccess($paymentLinkId, $razorpayPaymentId)
     {
-        return DB::transaction(function () use ($razorpayOrderId, $razorpayPaymentId) {
-            $payment = Payment::where('razorpay_order_id', $razorpayOrderId)->first();
+        return DB::transaction(function () use ($paymentLinkId, $razorpayPaymentId) {
+            $payment = Payment::where('razorpay_payment_link_id', $paymentLinkId)->first();
 
-            if (!$payment) {
-                Log::error("Payment not found for Order ID: {$razorpayOrderId}");
+            if (! $payment) {
+                Log::error("Payment not found for Order ID: {$paymentLinkId}");
+
                 return null;
             }
 
@@ -89,19 +90,19 @@ class PaymentService
             $newExpiry = null;
 
             // Logic for Expiry and Plan Change
-            if (!$user->plan_id || $user->plan_id == $newPlan->id) {
+            if (! $user->plan_id || $user->plan_id == $newPlan->id) {
                 // Case 1: First payment or Same Plan (Renewal)
                 // expiry = max(now, current_expiry) + 30 days
-                $baseDate = ($user->plan_expires_at && $user->plan_expires_at->isFuture()) 
-                            ? $user->plan_expires_at 
+                $baseDate = ($user->plan_expires_at && $user->plan_expires_at->isFuture())
+                            ? $user->plan_expires_at
                             : $now;
-                
+
                 $newExpiry = $baseDate->copy()->addDays(30);
-                
+
                 $user->update([
                     'plan_id' => $newPlan->id,
                     'plan_expires_at' => $newExpiry,
-                    'pending_plan_id' => null
+                    'pending_plan_id' => null,
                 ]);
             } else {
                 // Case 2: Plan Change (Upgrade or Downgrade)
@@ -110,21 +111,21 @@ class PaymentService
 
                 if ($isUpgrade) {
                     // Upgrades apply immediately
-                    $baseDate = ($user->plan_expires_at && $user->plan_expires_at->isFuture()) 
-                                ? $user->plan_expires_at 
+                    $baseDate = ($user->plan_expires_at && $user->plan_expires_at->isFuture())
+                                ? $user->plan_expires_at
                                 : $now;
-                    
+
                     $newExpiry = $baseDate->copy()->addDays(30);
                     $user->update([
                         'plan_id' => $newPlan->id,
                         'plan_expires_at' => $newExpiry,
-                        'pending_plan_id' => null
+                        'pending_plan_id' => null,
                     ]);
                 } else {
                     // Downgrades only take effect after current plan expires
                     // So we set pending_plan_id
                     $user->update([
-                        'pending_plan_id' => $newPlan->id
+                        'pending_plan_id' => $newPlan->id,
                     ]);
                     // Expiry remains same
                     $newExpiry = $user->plan_expires_at;
@@ -134,7 +135,7 @@ class PaymentService
             $payment->update([
                 'razorpay_payment_id' => $razorpayPaymentId,
                 'status' => 'captured',
-                'expires_at_after_payment' => $newExpiry
+                'expires_at_after_payment' => $newExpiry,
             ]);
 
             return $payment;
@@ -157,12 +158,12 @@ class PaymentService
                     $user->update([
                         'plan_id' => $user->pending_plan_id,
                         'plan_expires_at' => Carbon::now()->addDays(30),
-                        'pending_plan_id' => null
+                        'pending_plan_id' => null,
                     ]);
-                    
+
                     // Notify user about transition
                     $user->notify(new \App\Notifications\PlanExpiryNotification($user, 'expired'));
-                    
+
                     Log::info("User {$user->id} moved to pending plan {$user->plan_id}");
                 } else {
                     // Fallback to Free
@@ -170,7 +171,7 @@ class PaymentService
                     $user->update([
                         'plan_id' => $freePlan ? $freePlan->id : null,
                         'plan_expires_at' => null,
-                        'pending_plan_id' => null
+                        'pending_plan_id' => null,
                     ]);
 
                     // Notify user about transition to free
@@ -185,15 +186,15 @@ class PaymentService
     /**
      * Update payment status based on webhook events (e.g. expired, cancelled).
      */
-    public function updatePaymentStatus($razorpayOrderId, $status)
+    public function updatePaymentStatus($paymentLinkId, $status)
     {
-        $payment = Payment::where('razorpay_order_id', $razorpayOrderId)->first();
+        $payment = Payment::where('razorpay_payment_link_id', $paymentLinkId)->first();
 
         if ($payment) {
             $payment->update(['status' => $status]);
-            Log::info("Updated payment status for Order ID {$razorpayOrderId} to {$status}");
+            Log::info("Updated payment status for Order ID {$paymentLinkId} to {$status}");
         } else {
-            Log::warning("Payment not found for Order ID {$razorpayOrderId} during status update to {$status}");
+            Log::warning("Payment not found for Order ID {$paymentLinkId} during status update to {$status}");
         }
     }
 }

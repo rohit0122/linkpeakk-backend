@@ -2,18 +2,18 @@
 
 namespace App\Models;
 
+use App\Traits\FormattedResponseTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\FormattedResponseTrait;
 
 class Payment extends Model
 {
-    use HasFactory, FormattedResponseTrait;
+    use FormattedResponseTrait, HasFactory;
 
     protected $fillable = [
         'user_id',
         'plan_id',
-        'razorpay_order_id',
+        'razorpay_payment_link_id',
         'razorpay_payment_id',
         'amount',
         'currency',

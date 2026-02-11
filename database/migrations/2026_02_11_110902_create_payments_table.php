@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('plan_id')->constrained()->onDelete('cascade');
-            $table->string('razorpay_order_id')->unique();
+            $table->string('razorpay_payment_link_id')->unique();
             $table->string('razorpay_payment_id')->nullable()->unique();
             $table->decimal('amount', 10, 2);
             $table->string('currency', 3)->default('INR');

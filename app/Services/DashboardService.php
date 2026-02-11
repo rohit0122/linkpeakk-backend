@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BioPage;
 use App\Models\Plan;
 use App\Models\User;
+use Carbon\Carbon;
 
 class DashboardService
 {
@@ -105,8 +106,8 @@ class DashboardService
     public function formatSubscription(User $user)
     {
         $plan = $user->plan;
-        
-        if (!$plan || $plan->slug === 'free') {
+
+        if (! $plan || $plan->slug === 'free') {
             return [
                 'status' => 'free',
                 'plan_name' => $plan ? $plan->name : 'FREE',
@@ -116,10 +117,10 @@ class DashboardService
         }
 
         $isExpired = $user->plan_expires_at && $user->plan_expires_at->isPast();
-        
+
         // Check payment history to determine if this is a trial or active paid sub
         $hasPaid = $user->payments()->where('status', 'captured')->exists();
-        $isTrial = !$hasPaid && $plan->price > 0;
+        $isTrial = ! $hasPaid && $plan->price > 0;
 
         if ($isExpired) {
             $status = 'expired';
@@ -131,6 +132,7 @@ class DashboardService
             $status = 'active';
             $statusLabel = 'Active';
         }
+        $now = Carbon::now();
 
         return [
             'status' => $status,
@@ -138,6 +140,7 @@ class DashboardService
             'expiry_date' => $user->plan_expires_at ? $user->plan_expires_at->format('Y-m-d\TH:i:s\Z') : null,
             'is_trial' => $isTrial,
             'formatted_status' => $statusLabel,
+            'is_renewal_window_open' => $user->plan_expires_at ? ($user->plan_expires_at->between($now, $now->copy()->addDays(7))) : true,
             'prefill' => [
                 'name' => $user->name,
                 'email' => $user->email,
