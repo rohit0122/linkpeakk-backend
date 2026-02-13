@@ -38,10 +38,8 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('slug')->unique();
-            $table->string('razorpay_plan_id')->nullable();
             $table->decimal('price', 8, 2)->default(0);
             $table->string('currency', 3)->default('USD');
-            $table->string('billing_interval')->default('month');
             $table->integer('trial_days')->default(0);
             $table->json('features')->nullable();
             $table->boolean('is_active')->default(true);
@@ -53,10 +51,8 @@ return new class extends Migration
             [
                 'name' => 'DEMO',
                 'slug' => 'demo',
-                'razorpay_plan_id' => null,
                 'price' => 0.00,
                 'currency' => 'USD',
-                'billing_interval' => 'month',
                 'trial_days' => 0,
                 'is_active' => true,
                 'features' => json_encode([
@@ -75,10 +71,8 @@ return new class extends Migration
             [
                 'name' => 'FREE',
                 'slug' => 'free',
-                'razorpay_plan_id' => null,
                 'price' => 0.00,
                 'currency' => 'USD',
-                'billing_interval' => 'month',
                 'trial_days' => 0,
                 'is_active' => true,
                 'features' => json_encode([
@@ -97,10 +91,8 @@ return new class extends Migration
             [
                 'name' => 'PRO',
                 'slug' => 'pro',
-                'razorpay_plan_id' => 'plan_S3Si6GlKBSnioK',
                 'price' => 9.00,
                 'currency' => 'USD',
-                'billing_interval' => 'month',
                 'trial_days' => 7,
                 'is_active' => true,
                 'features' => json_encode([
@@ -119,10 +111,8 @@ return new class extends Migration
             [
                 'name' => 'AGENCY',
                 'slug' => 'agency',
-                'razorpay_plan_id' => 'plan_S3SieAJbKmSdPh',
                 'price' => 49.00,
                 'currency' => 'USD',
-                'billing_interval' => 'month',
                 'trial_days' => 7,
                 'is_active' => true,
                 'features' => json_encode([

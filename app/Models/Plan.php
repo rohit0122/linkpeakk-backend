@@ -15,6 +15,7 @@ class Plan extends Model
         'slug',
         'price',
         'currency',
+        'trial_days',
         'is_active',
         'features',
     ];

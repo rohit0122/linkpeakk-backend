@@ -107,14 +107,16 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'api.rate.limit:60,1'])->group(
     Route::post('/payments/verify', [\App\Http\Controllers\Api\v1\PaymentController::class, 'verifyPayment']);
 });
 
-// Admin Endpoints
-Route::prefix('v1/admin')->middleware(['auth:sanctum', 'api.rate.limit:60,1'])->group(function () {
-    // Basic role check can be added if 'role' column exists
-    Route::get('/stats', [\App\Http\Controllers\Api\v1\AdminController::class, 'stats']);
-    Route::get('/users', [\App\Http\Controllers\Api\v1\AdminController::class, 'users']);
-    Route::post('/user/suspend', [\App\Http\Controllers\Api\v1\AdminController::class, 'suspend']);
-    Route::post('/subscriptions/sync', [\App\Http\Controllers\Api\v1\AdminController::class, 'syncSubscriptions']);
-    Route::get('/subscriptions', [\App\Http\Controllers\Api\v1\AdminController::class, 'indexSubscriptions']);
+    // Admin Endpoints
+    Route::prefix('v1/admin')->middleware(['auth:sanctum', 'api.rate.limit:60,1'])->group(function () {
+        Route::get('/stats', [\App\Http\Controllers\Api\v1\AdminController::class, 'stats']);
+        Route::get('/users', [\App\Http\Controllers\Api\v1\AdminController::class, 'users']);
+        Route::get('/users/{id}', [\App\Http\Controllers\Api\v1\AdminController::class, 'showUser']);
+        Route::post('/users/{id}/override-plan', [\App\Http\Controllers\Api\v1\AdminController::class, 'overridePlan']);
+        Route::post('/user/suspend', [\App\Http\Controllers\Api\v1\AdminController::class, 'suspend']);
+        Route::get('/payments', [\App\Http\Controllers\Api\v1\AdminController::class, 'indexPayments']);
+        Route::get('/bio-pages', [\App\Http\Controllers\Api\v1\AdminController::class, 'indexPages']);
+        Route::get('/webhook-logs', [\App\Http\Controllers\Api\v1\AdminController::class, 'indexWebhookLogs']);
 
     // AI Helpers (Placeholders)
     Route::post('/ai/generate-title', function () {

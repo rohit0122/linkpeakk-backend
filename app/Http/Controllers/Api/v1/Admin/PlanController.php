@@ -27,12 +27,10 @@ class PlanController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:plans,slug',
-            'razorpay_plan_id' => 'nullable|string|max:255',
+            'slug' => 'required|string|max:255|unique:plans,slug',
             'price' => 'required|numeric|min:0',
             'currency' => 'required|string|max:3',
-            'billing_interval' => 'required|in:month,year',
-            'trial_days' => 'required|integer|min:0',
+            'trial_days' => 'nullable|integer|min:0|max:365',
             'is_active' => 'required|boolean',
             'features' => 'required|array',
         ]);
@@ -64,14 +62,12 @@ class PlanController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
-            'slug' => ['sometimes', 'required', 'string', 'max:255', Rule::unique('plans')->ignore($plan->id)],
-            'razorpay_plan_id' => 'sometimes|nullable|string|max:255',
+            'slug' => 'sometimes|required|string|max:255|unique:plans,slug,'.$id,
             'price' => 'sometimes|required|numeric|min:0',
             'currency' => 'sometimes|required|string|max:3',
-            'billing_interval' => 'sometimes|required|in:month,year',
-            'trial_days' => 'sometimes|required|integer|min:0',
-            'is_active' => 'sometimes|required|boolean',
-            'features' => 'sometimes|required|array',
+            'trial_days' => 'nullable|integer|min:0|max:365',
+            'is_active' => 'boolean',
+            'features' => 'nullable|array',
         ]);
 
         $plan->update($validated);
@@ -86,9 +82,9 @@ class PlanController extends Controller
     {
         $plan = Plan::findOrFail($id);
 
-        // Check if plan has active subscriptions
-        if ($plan->subscriptions()->whereIn('status', ['active', 'trialing'])->exists()) {
-            return ApiResponse::error('Cannot delete plan with active subscriptions. Deactivate it instead.', 400);
+        // Check if plan is currently assigned to any users
+        if (\App\Models\User::where('plan_id', $plan->id)->exists()) {
+            return ApiResponse::error('Cannot delete plan that is currently assigned to users. Deactivate it instead.', 400);
         }
 
         $plan->delete();
