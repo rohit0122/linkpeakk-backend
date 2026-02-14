@@ -60,7 +60,7 @@ class RazorpayService
         return is_object($newCustomer) ? $newCustomer->id : ($newCustomer['id'] ?? null);
     }
 
-    public function createOrder($amount, $currency = 'INR', $metadata = [])
+    public function createOrder($amount, $currency = 'USD', $metadata = [])
     {
         try {
             return $this->api->order->create([

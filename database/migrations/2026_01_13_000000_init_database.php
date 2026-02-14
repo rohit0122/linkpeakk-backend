@@ -27,6 +27,9 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamp('suspended_at')->nullable();
             $table->string('suspension_reason')->nullable();
+            $table->foreignId('plan_id')->nullable()->constrained('plans')->onDelete('set null');
+            $table->timestamp('plan_expires_at')->nullable();
+            $table->foreignId('pending_plan_id')->nullable()->constrained('plans')->onDelete('set null');
             $table->rememberToken();
             $table->timestamps();
 
@@ -176,33 +179,31 @@ return new class extends Migration
             $table->index(['bio_page_id', 'is_active', 'order']);
         });
 
-        // 5. Subscriptions Table
-        Schema::create('subscriptions', function (Blueprint $table) {
+        // 5. Payments Table
+        Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('plan_id')->constrained()->onDelete('cascade');
-            $table->string('razorpay_subscription_id')->nullable()->unique();
-            $table->string('razorpay_customer_id')->nullable();
-            $table->string('status');
-            $table->timestamp('current_period_start')->nullable();
-            $table->timestamp('current_period_end')->nullable();
-            $table->timestamp('trial_ends_at')->nullable();
-            $table->timestamp('ends_at')->nullable();
-            $table->timestamp('cancelled_at')->nullable();
+            $table->string('razorpay_payment_link_id')->unique();
+            $table->string('razorpay_payment_id')->nullable()->unique();
+            $table->decimal('amount', 10, 2);
+            $table->string('currency', 3)->default('USD');
+            $table->string('status')->default('created'); // created, captured, failed
+            $table->timestamp('expires_at_after_payment')->nullable();
             $table->timestamps();
-
-            $table->index(['status', 'current_period_end']);
         });
 
-        // 6. Plan Changes Table
-        Schema::create('plan_changes', function (Blueprint $table) {
+        // 6. Newsletter Subscribers Table
+        Schema::create('newsletter_subscribers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('subscription_id')->constrained()->onDelete('cascade');
-            $table->foreignId('from_plan_id')->constrained('plans')->onDelete('cascade');
-            $table->foreignId('to_plan_id')->constrained('plans')->onDelete('cascade');
-            $table->string('reason')->nullable();
+            $table->string('email')->unique();
             $table->timestamps();
+
+            $table->index('email');
         });
+
+
+
 
         // 7. Analytics Table
         Schema::create('analytics', function (Blueprint $table) {
@@ -327,6 +328,21 @@ return new class extends Migration
             $table->timestamp('expires_at')->nullable()->index();
             $table->timestamps();
         });
+
+        // 15. Create Admin User
+        $adminEmail = 'rohit.seed@gmail.com';
+        if (DB::table('users')->where('email', $adminEmail)->doesntExist()) {
+            DB::table('users')->insert([
+                'name' => 'Super Admin',
+                'email' => $adminEmail,
+                'password' => \Illuminate\Support\Facades\Hash::make('$Holishit22'),
+                'role' => 'admin',
+                'email_verified_at' => now(),
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 
     /**
@@ -345,8 +361,8 @@ return new class extends Migration
         Schema::dropIfExists('leads');
         Schema::dropIfExists('tickets');
         Schema::dropIfExists('analytics');
-        Schema::dropIfExists('plan_changes');
-        Schema::dropIfExists('subscriptions');
+        Schema::dropIfExists('newsletter_subscribers');
+        Schema::dropIfExists('payments');
         Schema::dropIfExists('links');
         Schema::dropIfExists('bio_pages');
         Schema::dropIfExists('plans');

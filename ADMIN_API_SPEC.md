@@ -23,7 +23,7 @@ This document defines the endpoints for the Admin Dashboard, focusing on one-tim
       "expiring_soon": 15 // Users expiring in < 7 days
     },
     "revenue_breakdown": [
-       { "currency": "INR", "total": "5500.00" },
+       { "currency": "USD", "total": "5500.00" },
        { "currency": "USD", "total": "200.00" }
     ],
     "top_pages": [
@@ -205,7 +205,7 @@ This document defines the endpoints for the Admin Dashboard, focusing on one-tim
   "name": "New Plan",
   "slug": "new-plan",
   "price": 299,
-  "currency": "INR",
+  "currency": "USD",
   "trial_days": 7,
   "is_active": true,
   "features": { "links": 10, "themes": ["standard"] }

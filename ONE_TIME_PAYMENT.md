@@ -87,7 +87,7 @@ This document outlines the **exact** API endpoints, request payloads, and respon
     "name": "Pro User",
     "slug": "pro",
     "price": 499,
-    "currency": "INR",
+    "currency": "USD",
     "features": [...]
   },
   {
@@ -95,7 +95,7 @@ This document outlines the **exact** API endpoints, request payloads, and respon
     "name": "Agency",
     "slug": "agency",
     "price": 999,
-    "currency": "INR",
+    "currency": "USD",
     "features": [...]
   }
 ]
