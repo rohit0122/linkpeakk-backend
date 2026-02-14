@@ -52,8 +52,8 @@ class DashboardService
         $lastPage = $bioPages->first();
         $data['bio_page'] = $this->formatBioPage($lastPage);
 
-        // For Agency users, include all page IDs
-        if ($user->role === 'agency') {
+        // For Agency (or users with multiple page limits), include all page IDs
+        if ($user->canAccessFeature('pages', 2)) {
             $data['all_page_ids'] = $bioPages
                 ->map(fn ($page) => [
                     'id' => $page->id,

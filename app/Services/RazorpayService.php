@@ -83,7 +83,7 @@ class RazorpayService
                 'currency' => $currency,
                 'description' => $description,
                 'notes' => $metadata,
-                'callback_url' => config('app.public_url') . '/dashboard?payment=success',
+                'callback_url' => config('app.public_url').'/dashboard/success/payment=success',
                 'callback_method' => 'get',
             ];
 
