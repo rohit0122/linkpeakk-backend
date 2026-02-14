@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Carbon\Carbon;
 
 return new class extends Migration
 {
@@ -13,7 +14,7 @@ return new class extends Migration
     {
         // 1. Create Seed Users
         $commonPassword = Hash::make('password');
-
+        
         $planMap = DB::table('plans')->pluck('id', 'slug')->toArray();
 
         $testUsers = [
@@ -51,34 +52,37 @@ return new class extends Migration
                 'updated_at' => now(),
             ],
             [
-                'name' => 'Demo User',
-                'email' => 'demo@yopmail.com',
-                'password' => $commonPassword,
-                'role' => 'user',
-                'plan_id' => $planMap['demo'] ?? null,
-                'plan_expires_at' => now()->addDays(7),
-                'email_verified_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Pro to Agency Simulation',
-                'email' => 'pro_to_agency@yopmail.com',
-                'password' => $commonPassword,
-                'role' => 'user',
-                'plan_id' => $planMap['pro'] ?? null,
-                'plan_expires_at' => now()->addDays(30),
-                'email_verified_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Agency to Pro Simulation',
-                'email' => 'agency_to_pro@yopmail.com',
+                'name' => 'Downgrade Simulation',
+                'email' => 'downgrade@yopmail.com',
                 'password' => $commonPassword,
                 'role' => 'agency',
                 'plan_id' => $planMap['agency'] ?? null,
+                'plan_expires_at' => now()->addDays(20),
+                'pending_plan_id' => $planMap['pro'] ?? null, // Will become Pro after 20 days
+                'email_verified_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Upgrade Simulation',
+                'email' => 'upgrade@yopmail.com',
+                'password' => $commonPassword,
+                'role' => 'user',
+                'plan_id' => $planMap['agency'] ?? null, // Was Pro, but upgraded immediately
                 'plan_expires_at' => now()->addDays(30),
+                'pending_plan_id' => null,
+                'email_verified_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Expiry Simulation',
+                'email' => 'expiry_test@yopmail.com',
+                'password' => $commonPassword,
+                'role' => 'agency',
+                'plan_id' => $planMap['agency'] ?? null,
+                'plan_expires_at' => now()->subDay(), // Expired yesterday
+                'pending_plan_id' => $planMap['pro'] ?? null, // Waiting for Cron to switch to Pro
                 'email_verified_at' => now(),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -91,34 +95,51 @@ return new class extends Migration
             }
         }
 
-        // 2. Simulate Plan Changes (Pending State)
-        // Scenario: Pro user has already requested to downgrade to Free after current plan ends
-        if (isset($planMap['free'])) {
-            DB::table('users')->where('email', 'pro@yopmail.com')->update([
-                'pending_plan_id' => $planMap['free'],
-            ]);
+        // 2. Seed Bio Pages and Links for users
+        $users = DB::table('users')->whereIn('email', array_column($testUsers, 'email'))->get();
+
+        foreach ($users as $user) {
+            // Check current effective plan (agency or not)
+            $isAgency = ($user->role === 'agency' || str_contains($user->email, 'agency') || str_contains($user->email, 'upgrade') || str_contains($user->email, 'downgrade') || str_contains($user->email, 'expiry'));
+            $pageCount = $isAgency ? 5 : 2;
+
+            for ($i = 1; $i <= $pageCount; $i++) {
+                $slug = str_replace('@yopmail.com', '', $user->email)."-page-{$i}";
+                $pageId = DB::table('bio_pages')->where('slug', $slug)->value('id');
+
+                if (! $pageId) {
+                    $pageId = DB::table('bio_pages')->insertGetId([
+                        'user_id' => $user->id,
+                        'slug' => $slug,
+                        'title' => "My Page {$i}",
+                        'bio' => "This is page {$i} for test user ".$user->email,
+                        'template' => 'sleek',
+                        'theme' => 'midnight',
+                        'is_active' => true,
+                        'created_at' => now()->subMinutes($i * 10),
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                for ($j = 1; $j <= 3; $j++) {
+                    $linkTitle = "Favorite Link {$j}";
+                    if (DB::table('links')->where('bio_page_id', $pageId)->where('title', $linkTitle)->doesntExist()) {
+                        DB::table('links')->insert([
+                            'user_id' => $user->id,
+                            'bio_page_id' => $pageId,
+                            'title' => $linkTitle,
+                            'url' => 'https://google.com',
+                            'is_active' => true,
+                            'order' => $j,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
         }
 
-        // Scenario: Pro to Agency (Upgrade Simulation)
-        if (isset($planMap['agency'])) {
-            DB::table('users')->where('email', 'pro_to_agency@yopmail.com')->update([
-                'pending_plan_id' => $planMap['agency'],
-            ]);
-        }
-
-        // Scenario: Agency to Pro (Downgrade Simulation)
-        if (isset($planMap['pro'])) {
-            DB::table('users')->where('email', 'agency_to_pro@yopmail.com')->update([
-                'pending_plan_id' => $planMap['pro'],
-            ]);
-        }
-
-        // Scenario: Agency user is in a "renewal window" (e.g. expires in 5 days)
-        DB::table('users')->where('email', 'agency@yopmail.com')->update([
-            'plan_expires_at' => now()->addDays(5),
-        ]);
-
-        echo "Manual test users and simulation scenarios seeded successfully.\n";
+        echo "REALISTIC test users and simulation scenarios seeded successfully.\n";
     }
 
     /**
@@ -130,9 +151,15 @@ return new class extends Migration
             'free@yopmail.com',
             'pro@yopmail.com',
             'agency@yopmail.com',
-            'demo@yopmail.com',
+            'upgrade@yopmail.com',
+            'downgrade@yopmail.com',
+            'expiry_test@yopmail.com',
         ];
 
-        DB::table('users')->whereIn('email', $emails)->delete();
+        $userIds = DB::table('users')->whereIn('email', $emails)->pluck('id');
+
+        DB::table('links')->whereIn('user_id', $userIds)->delete();
+        DB::table('bio_pages')->whereIn('user_id', $userIds)->delete();
+        DB::table('users')->whereIn('id', $userIds)->delete();
     }
 };
