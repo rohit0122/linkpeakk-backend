@@ -12,31 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // 1. Users Table
-        Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->text('bio')->nullable();
-            $table->string('avatar_url')->nullable();
-            // Added columns from separate migrations
-            $table->string('verification_token')->nullable();
-            $table->string('role')->default('user');
-            $table->boolean('is_active')->default(true);
-            $table->timestamp('suspended_at')->nullable();
-            $table->string('suspension_reason')->nullable();
-            $table->foreignId('plan_id')->nullable()->constrained('plans')->onDelete('set null');
-            $table->timestamp('plan_expires_at')->nullable();
-            $table->foreignId('pending_plan_id')->nullable()->constrained('plans')->onDelete('set null');
-            $table->rememberToken();
-            $table->timestamps();
-
-            $table->index(['role', 'is_active']);
-        });
-
-        // 2. Plans Table
+        // 1. Plans Table (Moved before Users due to Foreign Key)
         Schema::create('plans', function (Blueprint $table) {
             $table->id();
             $table->string('name');
@@ -51,7 +27,7 @@ return new class extends Migration
 
         // Seed Plans Data
         $plans = [
-            [
+             [
                 'name' => 'DEMO',
                 'slug' => 'demo',
                 'price' => 0.00,
@@ -135,6 +111,30 @@ return new class extends Migration
         ];
 
         DB::table('plans')->insert($plans);
+
+        // 2. Users Table
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password');
+            $table->text('bio')->nullable();
+            $table->string('avatar_url')->nullable();
+            // Added columns from separate migrations
+            $table->string('verification_token')->nullable();
+            $table->string('role')->default('user');
+            $table->boolean('is_active')->default(true);
+            $table->timestamp('suspended_at')->nullable();
+            $table->string('suspension_reason')->nullable();
+            $table->foreignId('plan_id')->nullable()->constrained('plans')->onDelete('set null');
+            $table->timestamp('plan_expires_at')->nullable();
+            $table->foreignId('pending_plan_id')->nullable()->constrained('plans')->onDelete('set null');
+            $table->rememberToken();
+            $table->timestamps();
+
+            $table->index(['role', 'is_active']);
+        });
 
         // 3. Bio Pages Table
         Schema::create('bio_pages', function (Blueprint $table) {
