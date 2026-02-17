@@ -79,6 +79,12 @@ MAIL_FROM_NAME="${APP_NAME}"
 php artisan key:generate
 ```
 
+### Link Storage
+
+```bash
+php artisan storage:link
+```
+
 ## 3. Database & Migrations
 
 ```bash
@@ -143,6 +149,54 @@ Enable the site:
 sudo ln -s /etc/nginx/sites-available/linkpeakk /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
+```
+
+## 5.1 Alternate: Web Server Configuration (Apache)
+
+If you prefer Apache, ensure `mod_rewrite` is enabled:
+
+```bash
+sudo a2enmod rewrite
+sudo systemctl restart apache2
+```
+
+Create config: `/etc/apache2/sites-available/linkpeakk.conf`
+
+```apache
+<VirtualHost *:80>
+    ServerName api.linkpeakk.com
+    DocumentRoot /var/www/linkpeakk-backend/public
+
+    # Redirect HTTP to HTTPS
+    RewriteEngine on
+    RewriteCond %{SERVER_NAME} =api.linkpeakk.com
+    RewriteRule ^ https://%{SERVER_NAME}%{REQUEST_URI} [END,NE,R=permanent]
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName api.linkpeakk.com
+    DocumentRoot /var/www/linkpeakk-backend/public
+
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/api.linkpeakk.com/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/api.linkpeakk.com/privkey.pem
+
+    <Directory /var/www/linkpeakk-backend/public>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+```
+
+Enable the site:
+
+```bash
+sudo a2ensite linkpeakk
+sudo systemctl reload apache2
 ```
 
 ## 6. Optimization Commands

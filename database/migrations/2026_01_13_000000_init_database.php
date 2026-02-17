@@ -27,7 +27,7 @@ return new class extends Migration
 
         // Seed Plans Data
         $plans = [
-             [
+            [
                 'name' => 'DEMO',
                 'slug' => 'demo',
                 'price' => 0.00,
@@ -161,7 +161,6 @@ return new class extends Migration
             $table->index('is_active');
         });
 
-
         // 4. Links Table
         Schema::create('links', function (Blueprint $table) {
             $table->id();
@@ -201,9 +200,6 @@ return new class extends Migration
 
             $table->index('email');
         });
-
-
-
 
         // 7. Analytics Table
         Schema::create('analytics', function (Blueprint $table) {
