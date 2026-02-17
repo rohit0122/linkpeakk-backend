@@ -73,6 +73,12 @@ MAIL_FROM_ADDRESS="hello@linkpeakk.com"
 MAIL_FROM_NAME="${APP_NAME}"
 ```
 
+### Generate Application Key
+
+```bash
+php artisan key:generate
+```
+
 ## 3. Database & Migrations
 
 ```bash
