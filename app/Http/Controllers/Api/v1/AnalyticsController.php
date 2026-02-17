@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers\Api\v1;
 
-use App\Http\Controllers\Controller;
-use App\Models\BioPage;
-use App\Models\Analytics;
 use App\Helpers\ApiResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
+use App\Models\Analytics;
+use App\Models\BioPage;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class AnalyticsController extends Controller
 {
@@ -43,8 +42,8 @@ class AnalyticsController extends Controller
                 'unique_clicks' => $uniqueClicks,
                 'total_likes' => $page->likes,
                 'total_active_links' => $activeLinks,
-                'avg_ctr' => $avgCTR // Percentage
-            ]
+                'avg_ctr' => $avgCTR, // Percentage
+            ],
         ], 'Lifetime stats retrieved successfully');
     }
 
@@ -55,7 +54,7 @@ class AnalyticsController extends Controller
     {
         $request->validate([
             'pageId' => 'required|exists:bio_pages,id',
-            'range' => 'required|in:7,15,30,90,180,9999'
+            'range' => 'required|in:7,15,30,90,180,9999',
         ]);
 
         $pageId = $request->pageId;
@@ -67,7 +66,7 @@ class AnalyticsController extends Controller
 
         // Plan-based access control for date ranges
         $allowedRanges = $this->getAllowedRanges($user);
-        if (!in_array($range, $allowedRanges)) {
+        if (! in_array($range, $allowedRanges)) {
             return ApiResponse::error('Upgrade your plan to access this date range.', [], 403);
         }
 
@@ -84,21 +83,21 @@ class AnalyticsController extends Controller
             'meta' => ['aggregation' => $aggregation, 'range' => $range],
             'data' => [
                 'summaryChart' => $summaryChart,
-                'detailedLinksChart' => $detailedLinksChart
-            ]
+                'detailedLinksChart' => $detailedLinksChart,
+            ],
         ], 'Chart data retrieved successfully');
     }
 
     private function getStartDate($range)
     {
         return match ($range) {
-            7 => now()->subDays(7),
-            15 => now()->subDays(15),
-            30 => now()->subMonth(),
-            90 => now()->subMonths(3),
-            180 => now()->subMonths(6),
+            7 => now()->subDays(6)->startOfDay(), // Last 7 days including today
+            15 => now()->subDays(14)->startOfDay(),
+            30 => now()->subDays(29)->startOfDay(),
+            90 => now()->subWeeks(11)->startOfWeek(), // approx 3 months (12 weeks)
+            180 => now()->subMonths(5)->startOfMonth(), // Last 6 months
             9999 => now()->subYears(10), // Arbitrary long time
-            default => now()->subDays(7),
+            default => now()->subDays(6)->startOfDay(),
         };
     }
 
@@ -134,7 +133,7 @@ class AnalyticsController extends Controller
         foreach ($chartDates as $dateInfo) {
             $label = $dateInfo['label'];
             $group = $grouped->get($label);
-            
+
             $totalViews = 0;
             $uniqueViews = 0;
             $totalClicks = 0;
@@ -169,7 +168,7 @@ class AnalyticsController extends Controller
     {
         // Get the page to access its links
         $page = BioPage::with('links:id,bio_page_id,title')->find($pageId);
-        
+
         $query = Analytics::where('bio_page_id', $pageId)
             ->where('date', '>=', $startDate)
             ->whereNotNull('link_id')
@@ -194,7 +193,7 @@ class AnalyticsController extends Controller
             $group = $grouped->get($label);
             $dayData = [
                 'label' => $label,
-                'date' => $dateInfo['date']
+                'date' => $dateInfo['date'],
             ];
 
             // Initialize all links with 0
@@ -211,43 +210,50 @@ class AnalyticsController extends Controller
                 foreach ($group as $item) {
                     $linkTitle = $item->link->title ?? 'Unknown Link';
                     // Initialize if not present (e.g., link deleted but in history)
-                    if (!isset($dayData[$linkTitle])) {
+                    if (! isset($dayData[$linkTitle])) {
                         $dayData[$linkTitle] = [
                             'total_clicks' => 0,
                             'unique_clicks' => 0,
                         ];
                     }
-                    
-                    $dayData[$linkTitle]['total_clicks'] += (int)$item->count;
-                    $dayData[$linkTitle]['unique_clicks'] += (int)$item->unique_count;
+
+                    $dayData[$linkTitle]['total_clicks'] += (int) $item->count;
+                    $dayData[$linkTitle]['unique_clicks'] += (int) $item->unique_count;
                 }
             }
-            
+
             $results[] = $dayData;
         }
 
         return $results;
     }
 
-    private function generateChartDates($range, $aggregation) {
-        $days = match ($range) {
-            7 => 7,
-            15 => 15,
-            30 => 30,
-            90 => 90,
-            180 => 180,
-            9999 => 365,
-            default => 7,
-        };
-
+    private function generateChartDates($range, $aggregation)
+    {
         $dates = [];
-        for ($i = $days - 1; $i >= 0; $i--) {
-            $date = Carbon::now()->subDays($i);
+        $startDate = $this->getStartDate($range);
+        $endDate = now()->endOfDay();
+
+        $current = $startDate->copy();
+
+        while ($current <= $endDate) {
+            $label = $this->formatChartLabel($current, $aggregation);
+
+            // For weekly/monthly, we want the label to represent the bucket
             $dates[] = [
-                'label' => $this->formatChartLabel($date, $aggregation),
-                'date' => $date->startOfDay()->format('Y-m-d\TH:i:s\Z')
+                'label' => $label,
+                'date' => $current->format('Y-m-d\TH:i:s\Z'),
             ];
+
+            // Advance based on aggregation
+            match ($aggregation) {
+                'daily' => $current->addDay(),
+                'weekly' => $current->addWeek(),
+                'monthly' => $current->addMonth(),
+                default => $current->addDay(),
+            };
         }
+
         return $dates;
     }
 
@@ -258,7 +264,8 @@ class AnalyticsController extends Controller
     {
         return match ($aggregation) {
             'daily' => $date->format('M d'),
-            'weekly' => $date->format('M') . ' W' . $date->format('W'),
+            // For weekly, identify by Year and Week Number
+            'weekly' => $date->startOfWeek()->format('M d').' - '.$date->endOfWeek()->format('M d'),
             'monthly' => $date->format('M Y'),
             default => $date->format('M d'),
         };
@@ -273,7 +280,8 @@ class AnalyticsController extends Controller
     private function getAllowedRanges($user)
     {
         $ranges = [7, 15, 30, 90, 180, 9999];
-        return array_filter($ranges, fn($r) => $user->canAccessFeature('analytics', $r));
+
+        return array_filter($ranges, fn ($r) => $user->canAccessFeature('analytics', $r));
     }
 
     /**
@@ -281,19 +289,9 @@ class AnalyticsController extends Controller
      */
     private function generateEmptyChartData($range, $aggregation)
     {
-        $days = match ($range) {
-            7 => 7,
-            15 => 15,
-            30 => 30,
-            90 => 90,
-            180 => 180,
-            9999 => 365,
-            default => 7,
-        };
-
         $chartDates = $this->generateChartDates($range, $aggregation);
         $data = [];
-        
+
         foreach ($chartDates as $dateInfo) {
             $data[] = [
                 'label' => $dateInfo['label'],
@@ -313,29 +311,19 @@ class AnalyticsController extends Controller
      */
     private function generateEmptyLinksChartData($range, $aggregation, $page)
     {
-        if (!$page || !$page->links || $page->links->isEmpty()) {
+        if (! $page || ! $page->links || $page->links->isEmpty()) {
             return [];
         }
 
-        $days = match ($range) {
-            7 => 7,
-            15 => 15,
-            30 => 30,
-            90 => 90,
-            180 => 180,
-            9999 => 365,
-            default => 7,
-        };
-
         $chartDates = $this->generateChartDates($range, $aggregation);
         $data = [];
-        
+
         foreach ($chartDates as $dateInfo) {
             $dayData = [
                 'label' => $dateInfo['label'],
-                'date' => $dateInfo['date']
+                'date' => $dateInfo['date'],
             ];
-            
+
             // Add each link with zero clicks
             foreach ($page->links as $link) {
                 $dayData[$link->title] = [
@@ -343,7 +331,7 @@ class AnalyticsController extends Controller
                     'unique_clicks' => 0,
                 ];
             }
-            
+
             $data[] = $dayData;
         }
 
