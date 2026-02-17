@@ -1,14 +1,12 @@
 @extends('emails.layout')
 
 @section('content')
-<h1 style="margin:0 0 20px 0;font-size:24px;font-weight:700;color:#111827;">Verify your email address</h1>
+<h1 style="margin:0 0 20px 0;font-size:24px;font-weight:700;color:#111827;">
+    Verify your email address
+</h1>
 
 <p style="margin:0 0 20px 0;font-size:16px;line-height:1.6;color:#4B5563;">
-    Thanks for signing up for {{ config('app.name') }}! We're excited to have you on board.
-</p>
-
-<p style="margin:0 0 20px 0;font-size:16px;line-height:1.6;color:#4B5563;">
-    Please confirm your email address by clicking the button below.
+    Thanks for signing up for {{ config('app.name') }}! We're excited to have you on board. Please confirm your email address by clicking the button below.
 </p>
 
 <div style="text-align:center;margin:32px 0;">
@@ -17,18 +15,16 @@
     </a>
 </div>
 
-<p style="margin:0 0 20px 0;font-size:16px;line-height:1.6;color:#4B5563;">
-    This verification link is valid for <strong>24 hours</strong>.
+<p style="margin:0 0 32px 0;font-size:16px;line-height:1.6;color:#4B5563;">
+    This verification link is valid for <strong>24 hours</strong>. If you didn't create an account, you can safely ignore this email.
 </p>
 
-<p style="font-size:14px;color:#6B7280;margin-top:24px;">
-    If you didn't create an account, you can safely ignore this email.
-</p>
-
-<p style="font-size:14px;color:#9CA3AF;border-top:1px solid #E5E7EB;padding-top:20px;margin-top:32px;">
-    If the button doesn't work, copy and paste this URL into your browser:<br/>
-    <span style="color:#6D28D9;word-break:break-all;">
+<div style="border-top:1px solid #E5E7EB;padding-top:24px;margin-top:32px;">
+    <p style="margin:0 0 8px 0;font-size:14px;color:#9CA3AF;">
+        If the button doesn't work, copy and paste this URL into your browser:
+    </p>
+    <p style="margin:0;font-size:13px;color:#6D28D9;word-break:break-all;line-height:1.4;">
         {{ $verificationUrl }}
-    </span>
-</p>
+    </p>
+</div>
 @endsection

@@ -11,13 +11,15 @@ class TrialExpiringNotification extends Notification
     use Queueable;
 
     protected $subscription;
+    protected $daysLeft;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct($subscription)
+    public function __construct($subscription, $daysLeft = 3)
     {
         $this->subscription = $subscription;
+        $this->daysLeft = $daysLeft;
     }
 
     /**
@@ -35,18 +37,19 @@ class TrialExpiringNotification extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
-        $trialEndsAt = $this->subscription->trial_ends_at->format('F j, Y');
-        $upgradeUrl = config('app.public_url') . '/dashboard';
-        $planName = $this->subscription->plan->name ?? 'Premium';
+        $renewUrl = config('app.public_url').'/dashboard';
 
         return (new MailMessage)
-            ->subject('Your Trial Expires Soon - ' . config('app.name'))
-            ->greeting('Hello ' . $notifiable->name . '!')
-            ->line("Your **{$planName}** trial will expire on **{$trialEndsAt}** (in 3 days).")
-            ->line('To continue enjoying premium features, please upgrade to a paid subscription.')
-            ->action('Upgrade Now', $upgradeUrl)
-            ->line('If you have any questions, feel free to contact our support team.')
-            ->line('Thank you for trying ' . config('app.name') . '!');
+            ->subject('Your Trial Expires Soon - '.config('app.name'))
+            ->view('emails.billing.reminder', [
+                'userName' => $notifiable->name ?? 'User',
+                'trial' => true,
+                'daysLeft' => $this->daysLeft,
+                'isUrgent' => $this->daysLeft <= 3,
+                'renewUrl' => $renewUrl,
+                'title' => 'Your Trial is about to expire',
+                'previewText' => 'To keep your bio page live, please renew your plan.',
+            ]);
     }
 
     /**

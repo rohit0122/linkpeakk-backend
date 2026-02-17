@@ -38,7 +38,7 @@ class WelcomeNotification extends Notification
         return (new \Illuminate\Notifications\Messages\MailMessage)
             ->subject('Welcome to ' . config('app.name') . '!')
             ->view('emails.auth.welcome', [
-                'name' => $notifiable->name,
+                'name' => $notifiable->name ?? 'User',
                 'dashboardUrl' => $dashboardUrl,
                 'title' => 'Welcome aboard!',
                 'previewText' => "Your account is verified. Let's build your amazing bio link page.",

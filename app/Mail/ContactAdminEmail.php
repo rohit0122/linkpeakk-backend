@@ -16,17 +16,17 @@ class ContactAdminEmail extends Mailable
     public $name;
     public $email;
     public $subject;
-    public $message;
+    public $messageBody;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($name, $email, $subject, $message)
+    public function __construct($name, $email, $subject, $messageBody)
     {
         $this->name = $name;
         $this->email = $email;
         $this->subject = $subject;
-        $this->message = $message;
+        $this->messageBody = $messageBody;
     }
 
     /**
@@ -51,7 +51,7 @@ class ContactAdminEmail extends Mailable
                 'name' => $this->name,
                 'email' => $this->email,
                 'subject' => $this->subject,
-                'message' => $this->message,
+                'messageBody' => $this->messageBody,
                 'title' => 'New Message: ' . $this->subject,
                 'previewText' => 'New contact form submission from ' . $this->name,
             ],

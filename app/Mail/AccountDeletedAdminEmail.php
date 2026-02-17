@@ -20,11 +20,11 @@ class AccountDeletedAdminEmail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct($name, $email)
+    public function __construct($name, $email, $deletedAt = null)
     {
         $this->name = $name;
         $this->email = $email;
-        $this->deletedAt = now()->toDateTimeString();
+        $this->deletedAt = $deletedAt ?? now()->toDateTimeString();
     }
 
     /**

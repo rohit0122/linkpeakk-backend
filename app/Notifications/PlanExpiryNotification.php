@@ -44,31 +44,21 @@ class PlanExpiryNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $planName = $this->user->plan->name ?? 'Premium';
-        $appName = config('app.name');
         $renewUrl = config('app.public_url') . '/dashboard';
 
-        if ($this->type === 'expired') {
-            return (new MailMessage)
-                ->subject("Your {$planName} Plan has Expired - {$appName}")
-                ->greeting("Hello {$notifiable->name}!")
-                ->line("Your **{$planName}** plan has expired.")
-                ->line("Your account has been transitioned to the **Free** plan.")
-                ->line("To regain access to all premium features, you can renew your plan at any time.")
-                ->action('Renew Now', $renewUrl)
-                ->line("Thank you for using {$appName}!");
-        }
+        $subject = "Your {$planName} Plan " . ($this->type === 'expired' ? 'has Expired' : "is Expiring in {$this->daysRemaining} days") . " - " . config('app.name');
 
-        // Warning messages (7, 5, 2 days)
-        $subject = "Your {$planName} Plan is Expiring in {$this->daysRemaining} Days - $appName";
-        
         return (new MailMessage)
             ->subject($subject)
-            ->greeting("Hello {$notifiable->name}!")
-            ->line("Your **{$planName}** plan will expire in **{$this->daysRemaining} days**.")
-            ->line("Renew now to ensure uninterrupted access to all your premium features.")
-            ->action('Renew Plan', $renewUrl)
-            ->line("If you have already renewed, please ignore this email.")
-            ->line("Thank you for using {$appName}!");
+            ->view('emails.billing.reminder', [
+                'userName' => $notifiable->name ?? 'User',
+                'trial' => false,
+                'daysLeft' => $this->daysRemaining ?? 0,
+                'isUrgent' => $this->type === 'expired' || ($this->daysRemaining < 3 && $this->daysRemaining !== null),
+                'renewUrl' => $renewUrl,
+                'title' => $this->type === 'expired' ? 'Plan Expired' : 'Plan Expiring Soon',
+                'previewText' => $this->type === 'expired' ? "Your {$planName} plan has expired." : "Your {$planName} plan is expiring in {$this->daysRemaining} days.",
+            ]);
     }
 
     /**

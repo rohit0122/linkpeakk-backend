@@ -13,16 +13,16 @@ class ContactReceiptEmail extends Mailable
 {
     use SerializesModels;
 
-    public $name;
-    public $subject;
+    public $messageBody;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($name, $subject)
+    public function __construct($name, $subject, $messageBody = '')
     {
         $this->name = $name;
         $this->subject = $subject;
+        $this->messageBody = $messageBody;
     }
 
     /**
@@ -31,7 +31,7 @@ class ContactReceiptEmail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "We've received your message",
+            subject: "We've received your message: " . $this->subject,
         );
     }
 
@@ -45,6 +45,7 @@ class ContactReceiptEmail extends Mailable
             with: [
                 'name' => $this->name,
                 'subject' => $this->subject,
+                'messageBody' => $this->messageBody,
                 'title' => "We've received your message",
                 'previewText' => 'Thanks for contacting ' . config('app.name'),
             ],
